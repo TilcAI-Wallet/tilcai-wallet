@@ -1,0 +1,17 @@
+{
+  "name": "@tilcai-wallet/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/app.test.ts"
+  },
+  "dependencies": {
+    "@tilcai-wallet/api-contracts": "workspace:*",
+    "fastify": "catalog:",
+    "zod": "catalog:"
+  }
+}
