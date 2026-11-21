@@ -1,0 +1,15 @@
+{
+  "name": "@tilcai-wallet/telegram-bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsx src/bot.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "grammy": "1.46.0",
+    "zod": "catalog:",
+    "@tilcai-wallet/config": "workspace:*"
+  }
+}
