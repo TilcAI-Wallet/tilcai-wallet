@@ -1,0 +1,16 @@
+{
+  "name": "@tilcai-wallet/whatsapp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tilcai-wallet/api-contracts": "workspace:*",
+    "fastify": "catalog:",
+    "zod": "catalog:"
+  }
+}
