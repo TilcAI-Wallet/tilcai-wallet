@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "TilcAI Wallet",
+    "slug": "tilcai-wallet",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "tilcai-wallet",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-router"
+    ],
+    "web": {
+      "output": "static",
+      "favicon": "./assets/icon.png"
+    }
+  }
+}
