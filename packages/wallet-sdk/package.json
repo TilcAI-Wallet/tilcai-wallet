@@ -1,0 +1,14 @@
+{
+  "name": "@tilcai-wallet/wallet-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tilcai-wallet/api-contracts": "workspace:*",
+    "@tilcai-wallet/config": "workspace:*"
+  }
+}
