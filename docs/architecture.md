@@ -34,3 +34,11 @@ Una tarjeta pertenece a una sesión lógica. Su subcuenta aloja fondos separados
 ## Orden y evidencia
 
 Autorizar → registrar la orden → simular → persistir intento y hash → enviar → reconciliar pago y entrega → emitir el recibo. Seguir el hash persistido antes de reintentar. Una sesión agotada solicita aumento y retoma la misma orden tras confirmar la nueva versión de política y revalidar la cotización.
+
+## Autorización de la tarjeta experimental
+
+**Estado** Investigación en curso. La cuenta Stellar clásica `G…` autoriza la orden con una firma Ed25519 de transacción. La tarjeta experimental `C…` agrega una firma ML-DSA sobre la autorización de Soroban. El firmante vive aislado. El relayer envía con Ed25519 y la subcuenta usa `__check_auth` para verificar la firma y las reglas de gasto. La primera prueba usa 0,50 USDC de Testnet y el pago directo.
+
+El dominio conserva orden, intento, política y recibo. El algoritmo se resuelve en el adaptador, el firmante y el contrato. El worker concilia la evidencia antes de mostrar «Autorización ML-DSA verificada · Testnet». La passkey, la recuperación del dueño, el relayer y el consenso tienen sus propias autoridades y criterios de seguridad. [Diagrama, protocolo de prueba y alcance](research/post-quantum.md#orden-de-pago-y-capas-de-firma)
+
+[Prioridades y dependencias](roadmap.md) · [Guion de demo](demo.md) · [README](../README.md)

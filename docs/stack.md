@@ -19,3 +19,5 @@ Node 24 sigue siendo LTS y coincide con la infraestructura TilcAI. TypeScript 6 
 Web y móvil fijan ESLint 9.39.5 por el rango de compatibilidad de los plugins de Next y Expo. El salto de lint a ESLint 10 requiere actualizar y validar sus configuraciones.
 
 El pago directo es el riel de demo. Los issues [#3158](https://github.com/x402-foundation/x402/issues/3158) y [#3352](https://github.com/x402-foundation/x402/issues/3352) explican las pruebas que requiere x402 con smart accounts. MPP se evalúa por separado. [Stellar MPP](https://github.com/stellar/stellar-mpp-sdk)
+
+**Prueba poscuántica · 21 de noviembre.** Para probar CAP-87, fijar un SDK Rust de Soroban compatible con Protocolo 30, Stellar CLI compatible y un firmante que implemente FIPS 204. Verificar las versiones y el protocolo del nodo antes de medir. Esta es la matriz de la prueba y la tabla anterior documenta las dependencias de la base. [Diseño del experimento](research/post-quantum.md) · [Guía de Bell](https://stellar.org/blog/developers/bell-protocol-30-upgrade-guide)

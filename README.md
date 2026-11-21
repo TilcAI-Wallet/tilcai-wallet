@@ -4,7 +4,7 @@
 
 **Para quién:** agencias de automatización con IA en La Paz, Bolivia, y freelancers que operan agentes para clientes. **Modelo:** suscripción mensual por agencia.
 
-**Estado:** la base del monorepo está lista y compila. Las cuentas, compras y límites se construyen ahora sobre **Stellar testnet**. Revisa el [checklist](#checklist-del-equipo).
+**Estado** La base del monorepo incluye los canales, CI y pruebas de humo. La primera entrega integra web móvil y MCP con compra directa y recibo en **Stellar Testnet**. [Prioridades y dependencias](docs/roadmap.md) · [Checklist](#checklist-del-equipo)
 
 ---
 
@@ -46,6 +46,17 @@ flowchart LR
 ```
 
 **Regla de oro:** los clientes solo hablan con la API a través de `wallet-sdk`. Nunca importan firmantes, credenciales ni acceso directo a datos. Más detalle en [Arquitectura](docs/architecture.md).
+
+### Investigación poscuántica
+
+**En curso.** La primera prueba propuesta usa una tarjeta de agente aislada y un pago de **0,50 USDC de prueba**. El trabajo de contratos y de canales de la primera entrega puede avanzar en paralelo con esta investigación.
+
+| Ruta | Cómo se autoriza la orden de pago |
+| --- | --- |
+| Wallet Stellar clásica `G…` | Orden → la clave Ed25519 firma la transacción → Stellar verifica y confirma el pago. |
+| Tarjeta experimental TilcAI `C…` | Orden → el firmante aislado firma la autorización Soroban con ML-DSA → el relayer firma el envío con Ed25519 → Soroban verifica firma y política → Stellar confirma → TilcAI concilia el recibo. |
+
+El alcance de la prueba es la **autorización de gasto dentro de la subcuenta**. [Diagrama, tarea delegable y evidencia requerida](docs/research/post-quantum.md)
 
 ---
 
@@ -106,6 +117,8 @@ Todos los comandos se ejecutan **desde la raíz** del repo.
 
 ## Checklist del equipo
 
+El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega. Acordar primero el entorno y los esquemas, iniciar contratos e identidad en paralelo y preparar web móvil y MCP con datos de prueba.
+
 <details open>
 <summary><b>0. Base de desarrollo</b> · 3/4</summary>
 
@@ -141,7 +154,7 @@ Todos los comandos se ejecutan **desde la raíz** del repo.
 </details>
 
 <details>
-<summary><b>3. Primera integración: web, móvil y MCP</b> · 0/5</summary>
+<summary><b>3. Primera integración · web móvil y MCP stdio</b> · 0/5</summary>
 
 - [ ] Mostrar saldo distinguido del disponible, centro de sesiones, tarjetas y extracto.
 - [ ] Implementar herramientas para consultar presupuesto, pedir una compra, solicitar aumento y buscar recibo.
@@ -152,14 +165,14 @@ Todos los comandos se ejecutan **desde la raíz** del repo.
 </details>
 
 <details>
-<summary><b>4. Canales adicionales</b> · 0/6</summary>
+<summary><b>4. Canales adicionales · P1 y P2</b> · 0/6</summary>
 
 - [ ] **Móvil.** Confirmar compilaciones iOS/Android, enlaces verificados, passkeys y notificaciones.
 - [ ] **Extensión.** Revisar permisos por origen, mensajes, expiración, revocación y Chrome/Edge.
 - [ ] **MCP remoto.** Integrar Streamable HTTP y validar autenticación, scopes y cada cliente.
 - [ ] **Telegram.** Validar bot y Mini App, vínculo, avisos y retorno al panel seguro.
-- [ ] **WhatsApp.** Verificar compatibilidad del caso con Meta, plantillas y webhooks.
 - [ ] **CLI/TUI.** Añadir alta autorizada, estado de sesión, consultas y recibos.
+- [ ] **WhatsApp (P2).** Verificar compatibilidad del caso con Meta, plantillas y webhooks.
 
 </details>
 
@@ -174,6 +187,18 @@ Todos los comandos se ejecutan **desde la raíz** del repo.
 
 </details>
 
+<details>
+<summary><b>I+D. Autorización poscuántica en Stellar Testnet</b> · investigación en curso</summary>
+
+- [x] Documentar el alcance de CAP-87 y confirmar Protocolo 30 en Testnet.
+- [ ] Probar SDK y CLI compatibles y una autorización ML-DSA-44 en una subcuenta aislada.
+- [ ] Registrar pago de 0,50, rechazos de contrato y comparación con autorización clásica en Soroban.
+- [ ] Conciliar la evidencia y mostrar el alcance en el recibo experimental.
+
+[Tarea delegable](docs/research/post-quantum.md#tarea-delegable)
+
+</details>
+
 ---
 
 ## Documentación
@@ -181,11 +206,13 @@ Todos los comandos se ejecutan **desde la raíz** del repo.
 | Tema | Documento |
 | --- | --- |
 | Qué resuelve y ejemplo de uso | [Producto](docs/product.md) |
+| Orden de trabajo, dependencias y criterios por canal | [Prioridades del equipo](docs/roadmap.md) |
 | Capas y límites de cada módulo | [Arquitectura](docs/architecture.md) |
 | Versiones y fuentes oficiales | [Stack](docs/stack.md) |
 | Órdenes, intentos y conciliación | [Persistencia](docs/persistence.md) |
 | Por qué bot y MCP propios | [ADR 001](docs/adr/001-owned-channels.md) |
 | Herramientas y riel de pago de la demo | [ADR 002](docs/adr/002-toolchain-and-demo.md) |
 | Paso a paso de la demo | [Guion de demo](docs/demo.md) |
+| Autorización de gasto con ML-DSA y alcance de la prueba | [Investigación poscuántica](docs/research/post-quantum.md) |
 
 [Organización en GitHub](https://github.com/TilcAI-Wallet)

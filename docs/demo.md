@@ -10,3 +10,7 @@
 - [ ] Revocar, conciliar lo que quede en vuelo y devolver 24,00 a la cuenta principal con aprobación del dueño.
 
 El recibo guarda permiso, orden, pago y evidencia del proveedor. Vector52 es candidato. Si la integración no está lista, un proveedor de prueba identificado puede verificar el hash y registrar la entrega. Registrar red, activo, protocolo, versiones y hashes. El ejemplo supone patrocinio de comisiones en otro activo.
+
+## Prueba poscuántica opcional
+
+**Investigación en curso.** Después de disponer de una transferencia clásica comparable en Soroban, mostrar una subcuenta de prueba que verifica ML-DSA para un gasto de **0,50 USDC de prueba**. Presentar hash, rechazos y mediciones cuando estén verificados. El recorrido principal de web móvil y MCP se puede cerrar con autorización clásica. [Tarea, criterios y frase para el pitch](research/post-quantum.md#tarea-delegable) · [Prioridades](roadmap.md)
