@@ -1,0 +1,15 @@
+{
+  "name": "@tilcai-wallet/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "commander": "15.1.0",
+    "@tilcai-wallet/config": "workspace:*",
+    "@tilcai-wallet/wallet-sdk": "workspace:*"
+  }
+}
