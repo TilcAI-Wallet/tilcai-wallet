@@ -1,61 +1,123 @@
 # TilcAI Wallet
 
-TilcAI Wallet hace verificables las compras de agentes de IA con una tarjeta fondeada por sesión, controles desde el celular y recibos que enlazan permiso, orden, pago y entrega.
+> **Tarjetas de gasto para agentes de IA.** Fondeas una sesión, el agente compra dentro de los límites, tú controlas todo desde el celular y cada compra deja un recibo verificable en Stellar.
 
-El cliente inicial son agencias de automatización con IA en La Paz, Bolivia, que compran datos e informes para proyectos de clientes. El piloto incluye freelancers que operan agentes para clientes. La hipótesis de ingresos es una suscripción mensual por agencia.
+**Para quién:** agencias de automatización con IA en La Paz, Bolivia, y freelancers que operan agentes para clientes. **Modelo:** suscripción mensual por agencia.
 
-Este repositorio contiene la base de desarrollo. Los puntos de entrada y controles de compilación permiten trabajar por módulo. Las cuentas, compras y límites de la wallet se implementarán y probarán en Stellar testnet.
+**Estado:** la base del monorepo está lista y compila. Las cuentas, compras y límites se construyen ahora sobre **Stellar testnet**. Revisa el [checklist](#checklist-del-equipo).
 
-## Arrancar
+---
 
-Requiere Node.js 24.22.1 y pnpm 10.33.0. La versión de Node está en `.node-version` y la de pnpm en `package.json`. Para el workspace Soroban se necesitan Rust y Stellar CLI.
+## Empieza en 3 pasos
 
-~~~sh
+Necesitas **Node.js 24.22.1** (ver `.node-version`) y **pnpm 10.33.0**. Para los contratos, también **Rust** y **Stellar CLI**.
+
+```sh
+# 1. Instalar todo el workspace
 pnpm install --frozen-lockfile
+
+# 2. Comprobar que todo compila y pasa las pruebas
 pnpm check
-~~~
 
-| Superficie | Comando desde la raíz | Base incluida |
-| --- | --- | --- |
-| [Web](apps/web/README.md) | `pnpm --filter @tilcai-wallet/web dev` | Next.js 16.4, Tailwind 4 y manifest web |
-| [Móvil](apps/mobile/README.md) | `pnpm --filter @tilcai-wallet/mobile dev` | Expo 58, React Native 0.88.1 y Expo Router |
-| [Extensión](apps/extension/README.md) | `pnpm --filter @tilcai-wallet/extension build` | WXT, Manifest V3, popup y service worker |
-| [MCP](apps/mcp/README.md) | `pnpm --filter @tilcai-wallet/mcp start` | Servidor stdio con SDK v2 y prueba de arranque |
-| [Bot de Telegram](apps/telegram-bot/README.md) | `pnpm --filter @tilcai-wallet/telegram-bot check` | Fábrica de bot con grammY |
-| [Mini App de Telegram](apps/telegram-miniapp/README.md) | `pnpm --filter @tilcai-wallet/telegram-miniapp dev` | React y Vite |
-| [WhatsApp](services/whatsapp/README.md) | `pnpm --filter @tilcai-wallet/whatsapp dev` | Servicio aislado con health check en el puerto 4001 |
-| [CLI](apps/cli/README.md) | `pnpm --filter @tilcai-wallet/cli start --help` | Commander y comando `health` |
-| [TUI](apps/tui/README.md) | `pnpm --filter @tilcai-wallet/tui start` | Vista de arranque con Ink |
-| [API](services/api/README.md) | `pnpm --filter @tilcai-wallet/api dev` | Fastify y `GET /healthz` en el puerto 4000 |
-| [Worker](services/worker/README.md) | `pnpm --filter @tilcai-wallet/worker check` | Entrada y validación de configuración |
-| [Soroban](contracts/soroban/README.md) | `cargo test --workspace --lib --locked` desde `contracts/soroban` | Workspace Cargo y contrato de arranque |
+# 3. Levantar la API y la web (cada una en su terminal)
+pnpm --filter @tilcai-wallet/api dev     # http://127.0.0.1:4000/healthz
+pnpm --filter @tilcai-wallet/web dev     # http://localhost:3000
+```
 
-Usa procesos de terminal separados. El SDK y la CLI consultan `http://127.0.0.1:4000` por defecto. `.env.example` documenta valores de arranque. Los procesos leen variables del entorno. En el módulo móvil, `build` exporta la vista web de Expo. El desarrollo para teléfono sigue la guía del módulo.
+No necesitas un archivo `.env` para trabajar en local: cada variable tiene un valor por defecto. [`.env.example`](.env.example) muestra cuáles existen.
 
-## Estructura
+---
 
-~~~text
-apps/                 # web, mobile, extension, mcp, Telegram, cli y tui
-services/             # api, worker y adaptador de WhatsApp
-packages/             # config, api-contracts, domain, wallet-sdk y tilcai-adapter
-contracts/soroban/    # workspace Rust y contrato de arranque
-infra/                # convenciones de entorno y operación
-tests/                # pruebas transversales
-docs/                 # arquitectura, decisiones, stack y guion de demo
-~~~
+## Cómo encaja todo
 
-Usa `packages/api-contracts` para los esquemas de API. Los canales usan `packages/wallet-sdk`. El gateway y el worker comparten reglas con `packages/domain`. El adaptador incorpora capacidades verificadas de la infraestructura de TilcAI. El bot de Telegram y el servidor MCP viven en este monorepo.
+```mermaid
+flowchart LR
+  subgraph Clientes
+    W[Web / Móvil / Extensión]
+    C[MCP / Telegram / WhatsApp / CLI / TUI]
+  end
+  W --> SDK[wallet-sdk]
+  C --> SDK
+  SDK --> API[API]
+  API --> D[domain]
+  D --> AD[tilcai-adapter]
+  AD --> ST[(Stellar / Soroban)]
+  WK[Worker] --> ST
+```
+
+**Regla de oro:** los clientes solo hablan con la API a través de `wallet-sdk`. Nunca importan firmantes, credenciales ni acceso directo a datos. Más detalle en [Arquitectura](docs/architecture.md).
+
+---
+
+## ¿Qué módulo toco?
+
+Todos los comandos se ejecutan **desde la raíz** del repo.
+
+### Clientes (lo que ve el usuario o el agente)
+
+| Módulo | Para qué sirve | Comando | Stack |
+| --- | --- | --- | --- |
+| [Landing](apps/landing/README.md) | Página pública del proyecto | `pnpm --filter @tilcai-wallet/landing dev` | Next.js 16.4 estático |
+| [Web](apps/web/README.md) | Panel del dueño (PWA) | `pnpm --filter @tilcai-wallet/web dev` | Next.js 16.4 + Tailwind 4 |
+| [Móvil](apps/mobile/README.md) | App iOS/Android | `pnpm --filter @tilcai-wallet/mobile dev` | Expo 58 + React Native 0.88 |
+| [Extensión](apps/extension/README.md) | Wallet en el navegador | `pnpm --filter @tilcai-wallet/extension dev` | WXT + Manifest V3 |
+| [MCP](apps/mcp/README.md) | Herramientas para agentes de IA | `pnpm --filter @tilcai-wallet/mcp start` | MCP SDK v2 (stdio) |
+| [Bot de Telegram](apps/telegram-bot/README.md) | Avisos y vínculo por chat | `pnpm --filter @tilcai-wallet/telegram-bot check` | grammY |
+| [Mini App de Telegram](apps/telegram-miniapp/README.md) | Panel dentro de Telegram | `pnpm --filter @tilcai-wallet/telegram-miniapp dev` | React + Vite |
+| [CLI](apps/cli/README.md) | Consultas desde la terminal | `pnpm --filter @tilcai-wallet/cli start --help` | Commander |
+| [TUI](apps/tui/README.md) | Vista interactiva en terminal | `pnpm --filter @tilcai-wallet/tui start` | Ink |
+
+### Servicios (backend)
+
+| Módulo | Para qué sirve | Comando | Puerto |
+| --- | --- | --- | --- |
+| [API](services/api/README.md) | Gateway: sesiones, tarjetas, órdenes | `pnpm --filter @tilcai-wallet/api dev` | 4000 |
+| [Worker](services/worker/README.md) | Conciliación con Stellar | `pnpm --filter @tilcai-wallet/worker check` | — |
+| [WhatsApp](services/whatsapp/README.md) | Webhooks y avisos | `pnpm --filter @tilcai-wallet/whatsapp dev` | 4001 |
+
+### Paquetes compartidos
+
+| Paquete | Úsalo para |
+| --- | --- |
+| `packages/api-contracts` | Esquemas Zod de cada endpoint. **Empieza aquí** si agregas una ruta. |
+| `packages/wallet-sdk` | Cliente HTTP que usan todos los canales. |
+| `packages/domain` | Reglas de negocio y estados (tarjeta, orden). Sin red ni base de datos. |
+| `packages/tilcai-adapter` | Puente hacia Stellar y la infraestructura TilcAI. |
+| `packages/config` | Nombre, versión, URL local y paleta de colores. |
+
+### Contratos
+
+| Módulo | Comando |
+| --- | --- |
+| [Soroban](contracts/soroban/README.md) | `cd contracts/soroban && cargo test --workspace --lib --locked` |
+
+---
+
+## Cómo contribuir
+
+1. Elige una tarea del checklist y crea una rama desde `main`.
+2. Trabaja solo en tu módulo con `pnpm --filter @tilcai-wallet/<módulo> …`.
+3. Ejecuta `pnpm check` antes de subir.
+4. Abre un PR. CI corre el workspace y los contratos.
+
+¿Cambias un endpoint? Primero `api-contracts`, luego la API, luego el SDK y al final el cliente. Guía completa en [CONTRIBUTING](CONTRIBUTING.md).
+
+---
 
 ## Checklist del equipo
 
-### 0. Base de desarrollo
+<details open>
+<summary><b>0. Base de desarrollo</b> · 3/4</summary>
 
 - [x] Crear workspace pnpm con dependencias fijadas y un único lockfile JavaScript.
 - [x] Preparar apps, adaptadores, API, worker, paquetes, Rust, comandos por módulo y CI.
 - [x] Agregar pruebas de humo de salud y MCP, y un test del contrato base.
 - [ ] Definir entornos, credenciales de testnet, activos y responsables mediante PR.
 
-### 1. Autoridad, API y estado
+</details>
+
+<details>
+<summary><b>1. Autoridad, API y estado</b> · 0/6</summary>
 
 - [ ] Modelar usuarios, tenants, sesiones lógicas, credenciales, tarjetas, políticas y recuperaciones.
 - [ ] Implementar alta, respaldo, WebAuthn, scopes, cierre y rotación.
@@ -64,7 +126,10 @@ Usa `packages/api-contracts` para los esquemas de API. Los canales usan `package
 - [ ] Versionar contratos de API, permitir consultas por alcance y proyectar el estado confirmado.
 - [ ] Aislar el firmante delegado y medir despliegue y restauración de subcuentas.
 
-### 2. Compra directa y recibo
+</details>
+
+<details>
+<summary><b>2. Compra directa y recibo</b> · 0/6</summary>
 
 - [ ] Confirmar la cuenta de contrato, factory, activo de prueba y proveedor.
 - [ ] Limitar activo, destino, monto, vigencia y gasto acumulado. Probar el rechazo directo en Soroban.
@@ -73,7 +138,10 @@ Usa `packages/api-contracts` para los esquemas de API. Los canales usan `package
 - [ ] Registrar evidencia autenticada de entrega y emitir un recibo con ID estable.
 - [ ] Reconciliar eventos, cursor, entrega tardía, duplicados y costo de las transacciones.
 
-### 3. Primera integración web móvil y MCP
+</details>
+
+<details>
+<summary><b>3. Primera integración: web, móvil y MCP</b> · 0/5</summary>
 
 - [ ] Mostrar saldo distinguido del disponible, centro de sesiones, tarjetas y extracto.
 - [ ] Implementar herramientas para consultar presupuesto, pedir una compra, solicitar aumento y buscar recibo.
@@ -81,16 +149,22 @@ Usa `packages/api-contracts` para los esquemas de API. Los canales usan `package
 - [ ] Congelar, reactivar, revocar y devolver remanente con estados de confirmación.
 - [ ] Reproducir los dos pagos y los rechazos del [guion de demo](docs/demo.md).
 
-### 4. Canales adicionales
+</details>
 
-- [ ] Móvil. Confirmar compilaciones iOS/Android, enlaces verificados, passkeys y notificaciones.
-- [ ] Extensión. Revisar permisos por origen, mensajes, expiración, revocación y Chrome/Edge.
-- [ ] MCP remoto. Integrar Streamable HTTP y validar autenticación, scopes y cada cliente.
-- [ ] Telegram. Validar bot y Mini App, vínculo, avisos y retorno al panel seguro.
-- [ ] WhatsApp. Verificar compatibilidad del caso con Meta, plantillas y webhooks.
-- [ ] CLI/TUI. Añadir alta autorizada, estado de sesión, consultas y recibos.
+<details>
+<summary><b>4. Canales adicionales</b> · 0/6</summary>
 
-### 5. Pruebas operativas y piloto
+- [ ] **Móvil.** Confirmar compilaciones iOS/Android, enlaces verificados, passkeys y notificaciones.
+- [ ] **Extensión.** Revisar permisos por origen, mensajes, expiración, revocación y Chrome/Edge.
+- [ ] **MCP remoto.** Integrar Streamable HTTP y validar autenticación, scopes y cada cliente.
+- [ ] **Telegram.** Validar bot y Mini App, vínculo, avisos y retorno al panel seguro.
+- [ ] **WhatsApp.** Verificar compatibilidad del caso con Meta, plantillas y webhooks.
+- [ ] **CLI/TUI.** Añadir alta autorizada, estado de sesión, consultas y recibos.
+
+</details>
+
+<details>
+<summary><b>5. Pruebas operativas y piloto</b> · 0/5</summary>
 
 - [ ] Probar aislamiento de tenants, dos tarjetas independientes y rotación sin reiniciar gasto.
 - [ ] Probar límites, revocación, resultados ambiguos, protección contra duplicados y retorno de fondos.
@@ -98,14 +172,20 @@ Usa `packages/api-contracts` para los esquemas de API. Los canales usan `package
 - [ ] Medir costo, tiempo de conciliación, disponibilidad y disposición a pagar con agencias y freelancers.
 - [ ] Registrar demo, hashes, resultados y estado por canal antes de publicar la postulación.
 
+</details>
+
+---
+
 ## Documentación
 
-- [Producto y ejemplo](docs/product.md)
-- [Arquitectura del monorepo](docs/architecture.md)
-- [Stack y fuentes oficiales](docs/stack.md)
-- [Persistencia y conciliación](docs/persistence.md)
-- [ADR 001 · Canales propios](docs/adr/001-owned-channels.md)
-- [ADR 002 · Herramientas y riel de demo](docs/adr/002-toolchain-and-demo.md)
-- [Guion de demo](docs/demo.md)
-- [Cómo contribuir](CONTRIBUTING.md)
-- [Perfil del proyecto](https://github.com/TilcAI-Wallet)
+| Tema | Documento |
+| --- | --- |
+| Qué resuelve y ejemplo de uso | [Producto](docs/product.md) |
+| Capas y límites de cada módulo | [Arquitectura](docs/architecture.md) |
+| Versiones y fuentes oficiales | [Stack](docs/stack.md) |
+| Órdenes, intentos y conciliación | [Persistencia](docs/persistence.md) |
+| Por qué bot y MCP propios | [ADR 001](docs/adr/001-owned-channels.md) |
+| Herramientas y riel de pago de la demo | [ADR 002](docs/adr/002-toolchain-and-demo.md) |
+| Paso a paso de la demo | [Guion de demo](docs/demo.md) |
+
+[Organización en GitHub](https://github.com/TilcAI-Wallet)

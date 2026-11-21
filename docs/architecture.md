@@ -17,6 +17,7 @@ La base ejecutable inicia los clientes, un health check de Fastify, un servidor 
 
 | Ruta | Límite |
 | --- | --- |
+| `apps/landing` | Página pública estática. No usa la API ni maneja datos de usuarios. |
 | `apps/*` | UX y transporte. Las aprobaciones sensibles se completan en superficies de dueño con passkey. |
 | `services/api` | Resuelve sesión, tenant y tarjeta. Valida solicitudes y persiste la intención antes de enviar. |
 | `services/worker` | Reconciliación, outbox y cursores. Nunca trata un resultado RPC incierto como un cargo fallido. |
