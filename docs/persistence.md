@@ -8,3 +8,5 @@
 - Una transición y su evento de outbox se persisten de forma atómica. El worker reanuda por cursor y publica en orden por wallet.
 
 Pendientes de implementación: migraciones, pruebas de concurrencia, persistencia de intentos de compra, outbox y política de respaldo.
+
+La tarjeta experimental reutiliza el mismo identificador de orden, intento y recibo. La evidencia de autorización en Testnet incluye subcuenta, algoritmo, versión de política, hash y ledger. El worker distingue evidencia observada en cadena de los metadatos del intento. La entrega del proveedor conserva su propio estado. [Investigación y criterios de conciliación](research/post-quantum.md#tarea-delegable)

@@ -14,3 +14,7 @@ Stellar CLI compila para `wasm32v1-none`. Revisa compatibilidad del SDK y la red
 - [ ] Diseñar el alcance para activo, beneficiario, transferencia y vigencia.
 - [ ] Implementar contador acumulado que se conserva al editar límites o rotar acceso.
 - [ ] Probar firma directa con el delegado, revocación, restauración y retiro.
+
+## Investigación poscuántica
+
+En curso. Usar un entorno de prueba con Protocolo 30 y verificar desde `__check_auth` una autorización ML-DSA-44 para una transferencia de 0,50 USDC de prueba. Contrastar el costo con la ruta clásica y conservar hashes y rechazos del contrato. [Tarea delegable, versiones y criterios](../../docs/research/post-quantum.md#tarea-delegable)
