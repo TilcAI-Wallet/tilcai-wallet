@@ -10,6 +10,8 @@ La copia de Bargain se carga desde `public/brand/bargain.otf` cuando está prese
 
 Los grabados de Claude Code, Codex, OpenCode y Grok Bot vienen de la sección Stack del [portafolio de Omar](https://github.com/OmarQV/omidev). Los tres primeros usan geometrías de [Lobe Icons](https://github.com/lobehub/lobe-icons). La versión de Grok Bot del portafolio es un trazado. Las marcas pertenecen a sus respectivos titulares. [Licencia MIT](public/brand/lobe-icons-license.txt)
 
+`#como-funciona` recorre tarjeta, límite, compra y recibo con una escena de celular. El panel fijo avanza con el scroll del navegador. Con movimiento reducido, en pantallas bajas y sin JavaScript se leen los cuatro pasos en orden. Ambos ejemplos de la landing comparten los importes de `src/app/story/demo-purchase.ts`.
+
 - [ ] Reemplazar el enlace del piloto por un formulario o correo del equipo.
 - [ ] Añadir capturas o video de la demo cuando el flujo en testnet esté listo.
 - [ ] Elegir dominio y hosting.
