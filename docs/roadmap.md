@@ -2,7 +2,7 @@
 
 **Revisión del 21 de noviembre de 2026.** Cada fila se puede convertir en una tarea. Los responsables se asignan al distribuir el trabajo. [Decisión de almacenamiento](adr/003-supabase-persistence.md) · [Criterios de validación](validation.md)
 
-La base incluye el workspace, los esqueletos de los canales, CI y pruebas de humo. La API y el SDK exponen la ruta de salud. MCP ofrece transporte stdio y responde al protocolo. Soroban tiene un contrato de ejemplo que devuelve su versión. El worker valida configuración y el adaptador resuelve la red. Las conexiones con cuentas, relayer y monitor upstream requieren una prueba integrada. La landing es informativa.
+La base incluye el workspace, los esqueletos de los canales, CI y pruebas de humo. La API y el SDK exponen la ruta de salud. MCP ofrece transporte stdio y responde al protocolo. Soroban tiene un prototipo de fondos retenidos y límite de gasto; el primer pago y un rechazo se verificaron en Testnet. La integración completa sigue pendiente. El worker valida configuración y el adaptador resuelve la red. Las conexiones con cuentas, relayer y monitor upstream requieren una prueba integrada. La landing es informativa.
 
 | Orden | Entregable y módulos | Depende de | Evidencia para cerrar |
 | --- | --- | --- | --- |

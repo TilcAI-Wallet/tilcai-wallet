@@ -4,7 +4,7 @@
 
 **Para quién:** agencias de automatización con IA en La Paz, Bolivia, y freelancers que operan agentes para clientes. **Modelo:** suscripción mensual por agencia.
 
-**Estado** La base del monorepo incluye los canales, CI y pruebas de humo. La primera entrega integra web móvil y MCP con compra directa y recibo en **Stellar Testnet**. [Prioridades y dependencias](docs/roadmap.md) · [Checklist](#checklist-del-equipo)
+**Estado** La base del monorepo incluye los canales, CI, pruebas de humo y un prototipo de política de gasto Soroban con un pago y rechazo verificados en Testnet; la compra integral permanece pendiente. La primera entrega integra web móvil y MCP con compra directa y recibo en **Stellar Testnet**. [Prioridades y dependencias](docs/roadmap.md) · [Checklist](#checklist-del-equipo)
 
 **Almacenamiento elegido** Supabase Postgres para sesiones, órdenes, intentos y recibos. Supabase Storage privado para los archivos que custodie la wallet. Stellar confirma saldos, gastos y políticas. La integración está pendiente. [Decisión y alcance](docs/adr/003-supabase-persistence.md)
 

@@ -26,7 +26,7 @@ La base ejecutable inicia los clientes, un health check de Fastify, un servidor 
 | `packages/domain` | Reglas del negocio. Los protocolos de canal, RPC y almacenamiento entran por puertos. |
 | `packages/api-contracts` y `packages/wallet-sdk` | Esquemas de transporte versionados y cliente compartido. |
 | `packages/tilcai-adapter` | Traduce capacidades upstream versionadas, con fallos explícitos. |
-| `contracts/soroban` | Autoridad y límites de cadena. El ejemplo compila sin facultades de gasto. |
+| `contracts/soroban` | Autoridad y límites de cadena. El prototipo restringe transferencias del saldo del contrato; se verificó un pago y un rechazo en Testnet. No implementa `__check_auth`. |
 | Postgres y Storage | Postgres coordina los estados operativos con aislamiento por tenant. Storage privado guarda archivos autorizados. La DB y los buckets quedan detrás de la API y servicios internos. |
 
 ## Autoridad
