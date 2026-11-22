@@ -37,9 +37,9 @@ export function Toggle({ label, detail, on, onChange }: { label: string; detail?
               } else router.refresh();
             });
           }}
-          className={`relative h-8 w-14 shrink-0 rounded-full ${value ? "bg-accent" : "bg-ivory/25"}`}
+          className={`relative h-8 w-14 shrink-0 rounded-full transition-colors duration-200 ${value ? "bg-accent" : "bg-ivory/25"}`}
         >
-          <span className={`absolute top-1 size-6 rounded-full ${value ? "right-1 bg-ink" : "left-1 bg-ivory"}`} />
+          <span className={`absolute top-1 left-1 size-6 rounded-full transition-[transform,background-color] duration-200 ease-(--ease-out) ${value ? "translate-x-6 bg-ink" : "bg-ivory"}`} />
           <span className="sr-only">{value ? "Activado" : "Desactivado"}</span>
         </button>
       </div>
