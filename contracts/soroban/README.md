@@ -14,6 +14,9 @@ Stellar CLI compila para `wasm32v1-none`. Revisa compatibilidad del SDK y la red
 - [ ] Diseñar el alcance para activo, beneficiario, transferencia y vigencia.
 - [ ] Implementar contador acumulado que se conserva al editar límites o rotar acceso.
 - [ ] Probar firma directa con el delegado, revocación, restauración y retiro.
+- [ ] Probar tope y transferencia atómicos, autorización expirada, cambio de destino, gastos simultáneos y contador tras restaurar.
+
+La primera entrega aplica controles de gasto en Soroban y unicidad de orden en la ruta coordinada por la aplicación. [Evidencia contractual](../../docs/validation.md#primer-corte-en-stellar-testnet)
 
 ## Investigación poscuántica
 

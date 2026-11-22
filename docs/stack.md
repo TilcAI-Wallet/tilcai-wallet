@@ -11,6 +11,7 @@ Corte del 20 de noviembre de 2026. Las versiones directas están en los manifies
 | MCP | SDK de servidor TypeScript 2.4.0 y stdio | [SDK v2](https://ts.sdk.modelcontextprotocol.io/v2/api/%40modelcontextprotocol/server/) |
 | Telegram | grammY 1.46 y Mini App con React y Vite 8.3 | [grammY](https://grammy.dev/guide/getting-started) · [Mini Apps](https://core.telegram.org/bots/webapps) |
 | Servicios | Fastify 5.12, Zod 4.6 y Node Test Runner | [Fastify](https://fastify.dev/docs/latest/Guides/Getting-Started/) · [Zod](https://zod.dev/) |
+| Persistencia objetivo | Supabase Postgres para API y worker, Storage privado para entregables. Esquema, migraciones y pool pendientes. | [ADR 003](adr/003-supabase-persistence.md) · [Conexiones](https://supabase.com/docs/guides/database/connecting-to-postgres) |
 | Stellar | JS SDK 17.4, Stellar CLI 30.0.1 y Soroban SDK 29.0.1 para wasm32v1-none | [SDKs](https://developers.stellar.org/) · [Rust SDK](https://github.com/stellar/rs-soroban-sdk) |
 | Terminal | Commander 15 e Ink 8 | [Commander](https://github.com/tj/commander.js) · [Ink](https://github.com/vadimdemedes/ink) |
 
