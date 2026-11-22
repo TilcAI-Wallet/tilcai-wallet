@@ -6,5 +6,8 @@
   "scripts": {
     "test": "tsx --test mcp.test.ts",
     "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@tilcai-wallet/api-contracts": "workspace:*"
   }
 }
