@@ -1,0 +1,35 @@
+.cue {
+  --cue-delay: 0ms;
+}
+
+.typing { display: none; }
+
+@media (prefers-reduced-motion: no-preference) and (min-height: 700px) {
+  :global([data-playing="true"]) :global([data-story-active="true"]) .cue {
+    animation: appear 330ms cubic-bezier(.2,.65,.25,1) var(--cue-delay) both;
+  }
+
+  :global([data-playing="true"]) :global([data-story-active="true"]) .typing {
+    display: flex;
+    animation: thinking 440ms ease 260ms both;
+  }
+
+  :global([data-playing="true"]) :global([data-story-active="true"]) .typing i {
+    animation: dot 320ms ease 270ms both;
+  }
+  :global([data-playing="true"]) :global([data-story-active="true"]) .typing i:nth-child(2) { animation-delay: 330ms; }
+  :global([data-playing="true"]) :global([data-story-active="true"]) .typing i:nth-child(3) { animation-delay: 390ms; }
+}
+
+@keyframes appear {
+  from { opacity: 0; translate: 0 8px; }
+}
+
+@keyframes thinking {
+  0%, 100% { opacity: 0; }
+  25%, 75% { opacity: 1; }
+}
+
+@keyframes dot {
+  50% { opacity: .55; translate: 0 -2px; }
+}
