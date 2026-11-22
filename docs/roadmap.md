@@ -20,4 +20,93 @@ La base incluye el workspace, los esqueletos de los canales, CI y pruebas de hum
 
 Asignar **contratos y backend en paralelo** y abrir **web móvil y MCP** sobre los esquemas y datos de prueba. Móvil nativo, extensión y Telegram también pueden preparar navegación, permisos y vínculo. Cada canal aporta su prueba de conexión, permisos, revocación y retorno al mismo recibo antes de habilitar las acciones correspondientes.
 
-[README y checklist](../README.md#checklist-del-equipo) · [Arquitectura](architecture.md) · [Demo](demo.md) · [Investigación poscuántica](research/post-quantum.md)
+[README](../README.md) · [Checklist histórico](#checklist-histórico-del-equipo) · [Arquitectura](architecture.md) · [Demo](demo.md) · [Investigación poscuántica](research/post-quantum.md)
+
+---
+
+## Checklist histórico del equipo
+
+> **Planificación histórica.** Copia del checklist que figuraba en el README principal hasta su reescritura del 22 de noviembre de 2026, con los enlaces ajustados a esta carpeta. Las marcas y los contadores conservan el estado registrado en ese momento y no se han actualizado. El avance posterior se documenta en los PR y en [Validación](validation.md).
+
+El [orden de integración](#prioridades-y-dependencias-de-tilcai-wallet) indica qué desbloquea cada entrega. Acordar primero el entorno y los esquemas, iniciar contratos e identidad en paralelo y preparar web móvil y MCP con datos de prueba.
+
+<details open>
+<summary><b>0. Base de desarrollo</b> · 3/4</summary>
+
+- [x] Crear workspace pnpm con dependencias fijadas y un único lockfile JavaScript.
+- [x] Preparar apps, adaptadores, API, worker, paquetes, Rust, comandos por módulo y CI.
+- [x] Agregar pruebas de humo de salud y MCP, y un test del contrato base.
+- [ ] Definir entornos, credenciales de testnet, activos y responsables mediante PR.
+
+</details>
+
+<details>
+<summary><b>1. Autoridad, API y persistencia</b> · 0/7</summary>
+
+- [ ] Modelar usuarios, tenants, sesiones lógicas, credenciales, tarjetas, políticas y recuperaciones.
+- [ ] Implementar alta, respaldo, WebAuthn, scopes, cierre y rotación.
+- [ ] Implementar intención de vínculo y fondeo con enlace de uso único.
+- [ ] Preparar Supabase Postgres para local y Testnet con migraciones, roles mínimos y RLS en tablas de tenant.
+- [ ] Persistir órdenes, intentos, idempotencia, retenciones, outbox e inbox. Probar la contención de API y worker.
+- [ ] Versionar OpenAPI y esquemas, autorizar por objeto y proyectar el estado confirmado.
+- [ ] Aislar el firmante delegado y medir despliegue y restauración de subcuentas.
+
+</details>
+
+<details>
+<summary><b>2. Compra directa y recibo</b> · 0/6</summary>
+
+- [ ] Confirmar la cuenta de contrato, factory, activo de prueba y proveedor.
+- [ ] Limitar activo, destino, monto, vigencia y gasto acumulado. Probar el rechazo directo en Soroban.
+- [ ] Implementar cotización, simulación de registro, firma aislada, simulación de verificación final, envío y conciliación por hash.
+- [ ] Conservar el pedido ante resultado incierto, cotización vencida o rechazo de presupuesto.
+- [ ] Registrar evidencia autenticada de entrega y emitir un recibo con ID estable.
+- [ ] Reconciliar eventos, cursor, entrega tardía, duplicados y costo. Probar reinicios antes y después del envío.
+
+</details>
+
+<details>
+<summary><b>3. Primera integración · web móvil y MCP stdio</b> · 0/5</summary>
+
+- [ ] Mostrar saldo distinguido del disponible, centro de sesiones, tarjetas y extracto.
+- [ ] Implementar herramientas para consultar presupuesto, pedir una compra, solicitar aumento y buscar recibo.
+- [ ] Aprobar el aumento con passkey y retomar la misma orden tras confirmar y revalidar.
+- [ ] Congelar, reactivar, revocar y devolver remanente con estados de confirmación.
+- [ ] Reproducir los dos pagos y los rechazos del [guion de demo](demo.md).
+
+</details>
+
+<details>
+<summary><b>4. Canales adicionales · P1 y P2</b> · 0/6</summary>
+
+- [ ] **Móvil.** Confirmar compilaciones iOS/Android, enlaces verificados, passkeys y notificaciones.
+- [ ] **Extensión.** Revisar permisos por origen, mensajes, expiración, revocación y Chrome/Edge.
+- [ ] **MCP remoto.** Integrar Streamable HTTP y validar autenticación, scopes y cada cliente.
+- [ ] **Telegram.** Validar bot y Mini App, vínculo, avisos y retorno al panel seguro.
+- [ ] **CLI/TUI.** Añadir alta autorizada, estado de sesión, consultas y recibos.
+- [ ] **WhatsApp (P2).** Verificar compatibilidad del caso con Meta, plantillas y webhooks.
+
+</details>
+
+<details>
+<summary><b>5. Pruebas operativas y piloto</b> · 0/5</summary>
+
+- [ ] Probar aislamiento de tenants, dos tarjetas independientes y rotación sin reiniciar gasto.
+- [ ] Probar límites, revocación, resultados ambiguos, protección contra duplicados y retorno de fondos.
+- [ ] Evaluar x402 y MPP con la smart account y capacidades de fondeo mediante rutas validadas.
+- [ ] Medir costo, tiempo de conciliación, disponibilidad y disposición a pagar con agencias y freelancers.
+- [ ] Registrar demo, hashes, resultados y estado por canal. Probar restauración, custodia y operación antes de usar fondos reales.
+
+</details>
+
+<details>
+<summary><b>I+D. Autorización poscuántica en Stellar Testnet</b> · investigación en curso</summary>
+
+- [x] Documentar el alcance de CAP-87 y confirmar Protocolo 30 en Testnet.
+- [ ] Probar SDK y CLI compatibles y una autorización ML-DSA-44 en una subcuenta aislada.
+- [ ] Registrar pago de 0,50, rechazos de contrato y comparación con autorización clásica en Soroban.
+- [ ] Conciliar la evidencia y mostrar el alcance en el recibo experimental.
+
+[Tarea delegable](research/post-quantum.md#tarea-delegable)
+
+</details>

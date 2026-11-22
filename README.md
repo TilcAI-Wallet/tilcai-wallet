@@ -1,226 +1,239 @@
 # TilcAI Wallet
 
-> **Tarjetas de gasto para agentes de IA.** Fondeas una sesión, el agente compra dentro de los límites, tú controlas todo desde el celular y cada compra deja un recibo verificable en Stellar.
+**Infraestructura de pagos autorizados para agentes de IA sobre Stellar.**
 
-**Para quién:** agencias de automatización con IA en La Paz, Bolivia, y freelancers que operan agentes para clientes. **Modelo:** suscripción mensual por agencia.
+TilcAI Wallet permite que un agente de IA compre en nombre de una persona o una organización. El agente nunca recibe acceso libre a los fondos: opera con una tarjeta de gasto que tiene presupuesto propio, límites por pago y por total, un destinatario fijado y un recibo verificable por cada orden.
 
-**Estado** La base del monorepo incluye los canales, CI, pruebas de humo y un prototipo de política de gasto Soroban con un pago y rechazo verificados en Testnet; la compra integral permanece pendiente. La primera entrega integra web móvil y MCP con compra directa y recibo en **Stellar Testnet**. [Prioridades y dependencias](docs/roadmap.md) · [Checklist](#checklist-del-equipo)
+La autoridad final sobre el gasto reside en un contrato **Soroban**. Una **API** multi-tenant coordina órdenes e idempotencia. Un **worker** concilia cada pago contra la red **Stellar**. Las aplicaciones y los agentes se integran mediante un **SDK** tipado y un servidor **MCP**.
 
-**Almacenamiento elegido** Supabase Postgres para sesiones, órdenes, intentos y recibos. Supabase Storage privado para los archivos que custodie la wallet. Stellar confirma saldos, gastos y políticas. La integración está pendiente. [Decisión y alcance](docs/adr/003-supabase-persistence.md)
-
----
-
-## Empieza en 3 pasos
-
-Necesitas **Node.js 24.22.1** (ver `.node-version`) y **pnpm 10.33.0**. Para los contratos, también **Rust** y **Stellar CLI**.
-
-```sh
-# 1. Instalar todo el workspace
-pnpm install --frozen-lockfile
-
-# 2. Comprobar que todo compila y pasa las pruebas
-pnpm check
-
-# 3. Levantar la API y la web (cada una en su terminal)
-pnpm --filter @tilcai-wallet/api dev     # http://127.0.0.1:4000/healthz
-pnpm --filter @tilcai-wallet/web dev     # http://localhost:3000
-```
-
-La base actual arranca en local con los valores de ejemplo. La primera compra integrada incorporará Postgres y variables de servicio por entorno. [`.env.example`](.env.example) documenta las variables disponibles hoy.
+> Pensado para agencias de automatización con IA y profesionales que operan agentes para sus clientes, empezando por La Paz, Bolivia.
 
 ---
 
-## Cómo encaja todo
+## ¿Qué resuelve?
+
+| Necesidad | Cómo la aborda TilcAI Wallet |
+| --- | --- |
+| **Autorizar pagos ejecutados por agentes** | El agente firma solo la operación de gasto de su tarjeta. El contrato decide si el pago respeta la política. |
+| **Controlar presupuestos y políticas** | Cada tarjeta fija el activo, el destinatario, el máximo por pago, el límite acumulado y la congelación. Antes de aceptar una orden, la API retiene el importe contra el saldo y la capacidad disponibles. |
+| **Trazar órdenes, transacciones y recibos** | Cada compra tiene una orden, un intento de pago, un hash de transacción y un recibo con ID estable. El recibo separa pago, entrega y reembolso. |
+| **Integrarse de forma programática** | Contratos de API versionados con Zod y OpenAPI, un cliente TypeScript compartido y herramientas MCP para agentes. |
+
+---
+
+## Funcionalidades
+
+### WalletFoundation: política de gasto en Soroban
+- Contrato de custodia en Rust (Soroban SDK 29) que retiene fondos y solo transfiere el activo configurado al destinatario configurado.
+- `spend` exige la firma del agente y aplica el máximo por pago y el límite acumulado. El contador y la transferencia se revierten juntos si algo falla.
+- El dueño gestiona la política con `set_policy`: rota el agente sin reiniciar el gasto, congela la tarjeta y ajusta los límites. Recupera fondos con `withdraw`.
+- Desplegado en Stellar Testnet con USDC: allí se confirmó un pago de 0,50 USDC y la red rechazó un gasto que superaba el límite ([evidencia](contracts/soroban/README.md#evidencia-de-testnet--issue-5)).
+
+### API de órdenes y recibos (v1)
+- Servicio Fastify con rutas para sesión, tarjeta, creación y consulta de órdenes, y recibos.
+- Autenticación con token bearer. La base de datos solo guarda el hash SHA-256 del token. Cada ruta exige un scope (`sessions:read`, `cards:read`, `orders:write`, `orders:read`, `receipts:read`).
+- El tenant se obtiene siempre de la credencial verificada, nunca de cabeceras, del cuerpo ni de la ruta.
+- Esquemas compartidos en `packages/api-contracts`, que también genera la especificación OpenAPI.
+
+### Idempotencia y control transaccional
+- `POST /v1/orders` requiere una `Idempotency-Key`. Repetir la misma solicitud devuelve la misma orden. Reusar la clave con otro contenido devuelve `409`.
+- La orden, la retención de presupuesto, el intento de pago, el evento de outbox y el recibo se crean en una sola transacción, con bloqueo de la tarjeta para evitar sobregasto concurrente.
+- Cada orden tiene como máximo un intento de pago activo, y un mismo hash de transacción solo puede liquidar una orden.
+
+### Worker de conciliación
+- Reclama trabajo con leases y fencing (`SKIP LOCKED` y tokens de lease). Todas las transiciones se ejecutan en funciones SQL que verifican el lease vigente.
+- Prepara y firma cada pago **una sola vez** y guarda el sobre XDR cifrado con AES-256-GCM. La clave se mantiene fuera de la base de datos. Tras un reinicio recupera el mismo sobre y el mismo hash.
+- Para confirmar un pago verifica la transacción y el evento de transferencia SEP-41: hash, red, sobre, activo, origen, destinatario, importe y rango de ledgers. Un timeout, un `NOT_FOUND` o una evidencia que no coincide conservan la orden y la retención sin generar un nuevo cargo.
+- Cada llamada RPC tiene un plazo máximo.
+- Después de un pago confirmado, el proveedor de entrega de referencia (`demo-report-provider`) emite un artefacto. El worker verifica de forma independiente su digest y su vínculo con la orden antes de registrar la entrega.
+
+### PostgreSQL, RLS y aislamiento multi-tenant
+- Esquema privado con migraciones numeradas, aplicadas con bloqueo y verificación de checksum.
+- Row-Level Security forzada en todas las tablas de tenant.
+- Para el rol de la API, el tenant queda vinculado a la credencial verificada en la misma transacción, así que cambiar el contexto de sesión no da acceso a otro tenant.
+- Roles separados (`wallet_migrator`, `wallet_api`, `wallet_worker`), sin `BYPASSRLS` ni privilegios de superusuario. El worker no tiene DML directo: actúa solo mediante funciones `SECURITY DEFINER` con `search_path` fijado.
+- La evidencia de pago y de entrega solo se escribe mediante transiciones verificadas, nunca con DML de los servicios.
+
+### SDK, MCP y aplicaciones cliente
+- **`wallet-sdk`:** cliente HTTP tipado que valida cada respuesta con los esquemas de la API.
+- **MCP (stdio):** herramientas `get_card`, `create_order`, `get_order` y `get_receipt` para que un agente consulte su presupuesto, compre y lea su recibo.
+- **PWA (Next.js):** panel del dueño. Cuando está configurada la API, el recibo se lee desde la API v1.
+- El mismo `receiptId` se lee igual desde la API, el MCP y la PWA; una prueba de integración lo comprueba.
+- Bases de canal adicionales en el monorepo: app móvil (Expo), extensión de navegador (WXT), bot y Mini App de Telegram, CLI, TUI y servicio de webhooks de WhatsApp.
+
+### Seguridad y separación de responsabilidades
+- Los clientes nunca importan firmantes, credenciales ni acceso a datos: hablan con la API.
+- La firma del agente, la clave de cifrado de sobres y las credenciales de base de datos se inyectan desde archivos o almacenes externos con permisos restringidos.
+- La difusión de transacciones está protegida por una compuerta explícita en el código, cerrada por defecto.
+
+---
+
+## Arquitectura
 
 ```mermaid
 flowchart LR
   subgraph Clientes
-    W[Web / Móvil / Extensión]
-    C[MCP / Telegram / WhatsApp / CLI / TUI]
+    PWA["PWA del dueño"]
+    MCP["MCP para agentes"]
+    CLI["CLI / otros canales"]
   end
-  W --> SDK[wallet-sdk]
-  C --> SDK
-  SDK --> API[API]
-  API --> D[domain]
-  API --> PG[(Supabase Postgres)]
-  API --> Storage[Supabase Storage privado]
-  D --> AD[tilcai-adapter]
-  AD --> ST[(Stellar / Soroban)]
-  WK[Worker] --> ST
-  WK --> PG
+  SDK["wallet-sdk + api-contracts"]
+  API["Wallet API v1<br/>Fastify"]
+  PG[("PostgreSQL<br/>RLS por tenant")]
+  WK["Worker de conciliación"]
+  PROV["Proveedor de entrega"]
+  subgraph Stellar
+    RPC["Stellar RPC"]
+    WF["WalletFoundation<br/>Soroban"]
+    USDC["USDC SAC"]
+  end
+
+  MCP --> SDK
+  CLI --> SDK
+  SDK --> API
+  PWA --> API
+  API --> PG
+  WK <--> PG
+  WK --> RPC
+  WK --> PROV
+  RPC --- WF
+  WF -->|transfer| USDC
 ```
 
-**Regla de oro:** los clientes solo hablan con la API a través de `wallet-sdk`. Nunca importan firmantes, credenciales ni acceso directo a datos. Más detalle en [Arquitectura](docs/architecture.md).
+**Flujo de una compra:**
+1. El agente pide una orden con una clave de idempotencia.
+2. La API valida la credencial, el scope y el presupuesto, retiene el importe y registra la orden y el evento de pago.
+3. El worker reclama el evento, prepara y firma un único sobre, y lo guarda cifrado.
+4. El worker concilia por hash contra Stellar. Con evidencia verificada confirma el pago, libera la retención, actualiza el gasto y dispara la entrega.
+5. El recibo refleja el pago, la entrega y el reembolso por separado.
 
-### Investigación poscuántica
+Más detalle en [Arquitectura](docs/architecture.md) y [Persistencia](docs/persistence.md).
 
-**En curso.** La primera prueba propuesta usa una tarjeta de agente aislada y un pago de **0,50 USDC de prueba**. El trabajo de contratos y de canales de la primera entrega puede avanzar en paralelo con esta investigación.
+---
 
-| Ruta | Cómo se autoriza la orden de pago |
+## Tecnologías
+
+| Capa | Tecnología |
 | --- | --- |
-| Wallet Stellar clásica `G…` | Orden → la clave Ed25519 firma la transacción → Stellar verifica y confirma el pago. |
-| Tarjeta experimental TilcAI `C…` | Orden → el firmante aislado firma la autorización Soroban con ML-DSA → el relayer firma el envío con Ed25519 → Soroban verifica firma y política → Stellar confirma → TilcAI concilia el recibo. |
-
-El alcance de la prueba es la **autorización de gasto dentro de la subcuenta**. [Diagrama, tarea delegable y evidencia requerida](docs/research/post-quantum.md)
+| Contratos | Rust, Soroban SDK 29, Stellar CLI |
+| Red | Stellar Testnet, USDC (Stellar Asset Contract), `@stellar/stellar-sdk` 17 |
+| Backend | Node.js 24, TypeScript, Fastify 5, Zod 4, `pg` |
+| Datos | PostgreSQL 17 con Row-Level Security (Supabase Postgres como destino gestionado) |
+| Agentes | Model Context Protocol (`@modelcontextprotocol/server`, stdio) |
+| Clientes | Next.js 16 + Tailwind 4, Expo + React Native, WXT, Vite + React, grammY, Commander, Ink |
+| Herramientas | pnpm 10 (workspace y catálogo), tsx, `node:test`, GitHub Actions |
 
 ---
 
-## ¿Qué módulo toco?
+## Estructura del monorepo
 
-Todos los comandos se ejecutan **desde la raíz** del repo.
-
-### Clientes (lo que ve el usuario o el agente)
-
-| Módulo | Para qué sirve | Comando | Stack |
-| --- | --- | --- | --- |
-| [Landing](apps/landing/README.md) | Página pública del proyecto | `pnpm --filter @tilcai-wallet/landing dev` | Next.js 16.4 estático |
-| [Web](apps/web/README.md) | Panel del dueño (PWA) | `pnpm --filter @tilcai-wallet/web dev` | Next.js 16.4 + Tailwind 4 |
-| [Móvil](apps/mobile/README.md) | App iOS/Android | `pnpm --filter @tilcai-wallet/mobile dev` | Expo 58 + React Native 0.88 |
-| [Extensión](apps/extension/README.md) | Wallet en el navegador | `pnpm --filter @tilcai-wallet/extension dev` | WXT + Manifest V3 |
-| [MCP](apps/mcp/README.md) | Herramientas para agentes de IA | `pnpm --filter @tilcai-wallet/mcp start` | MCP SDK v2 (stdio) |
-| [Bot de Telegram](apps/telegram-bot/README.md) | Avisos y vínculo por chat | `pnpm --filter @tilcai-wallet/telegram-bot check` | grammY |
-| [Mini App de Telegram](apps/telegram-miniapp/README.md) | Panel dentro de Telegram | `pnpm --filter @tilcai-wallet/telegram-miniapp dev` | React + Vite |
-| [CLI](apps/cli/README.md) | Consultas desde la terminal | `pnpm --filter @tilcai-wallet/cli start --help` | Commander |
-| [TUI](apps/tui/README.md) | Vista interactiva en terminal | `pnpm --filter @tilcai-wallet/tui start` | Ink |
-
-### Servicios (backend)
-
-| Módulo | Para qué sirve | Comando | Puerto |
-| --- | --- | --- | --- |
-| [API](services/api/README.md) | Gateway: sesiones, tarjetas, órdenes | `pnpm --filter @tilcai-wallet/api dev` | 4000 |
-| [Worker](services/worker/README.md) | Conciliación con Stellar | `pnpm --filter @tilcai-wallet/worker check` | — |
-| [WhatsApp](services/whatsapp/README.md) | Webhooks y avisos | `pnpm --filter @tilcai-wallet/whatsapp dev` | 4001 |
-
-### Paquetes compartidos
-
-| Paquete | Úsalo para |
+| Carpeta | Contenido |
 | --- | --- |
-| `packages/api-contracts` | Esquemas Zod de cada endpoint. **Empieza aquí** si agregas una ruta. |
-| `packages/wallet-sdk` | Cliente HTTP que usan todos los canales. |
-| `packages/domain` | Reglas de negocio y estados (tarjeta, orden). Sin red ni base de datos. |
-| `packages/tilcai-adapter` | Puente hacia Stellar y la infraestructura TilcAI. |
-| `packages/config` | Nombre, versión, URL local y paleta de colores. |
+| `contracts/soroban` | Contrato `WalletFoundation` y sus pruebas. |
+| `services/api` | Wallet API v1: autenticación, órdenes, idempotencia y recibos. |
+| `services/worker` | Conciliación con Stellar, sobres cifrados, leases y entrega. |
+| `services/whatsapp` | Frontera de webhooks y avisos. |
+| `infra/postgres` | Roles, migraciones, script de migración y pruebas de aislamiento. |
+| `packages/api-contracts` | Esquemas Zod de cada endpoint y generación de OpenAPI. |
+| `packages/wallet-sdk` | Cliente HTTP compartido por los canales. |
+| `packages/domain` | Estados y reglas de negocio, sin red ni base de datos. |
+| `packages/tilcai-adapter` | Puente hacia Stellar. |
+| `packages/config` | Nombre, versión, URL local y paleta. |
+| `apps/*` | PWA (`web`), `mcp`, `mobile`, `extension`, `telegram-bot`, `telegram-miniapp`, `cli`, `tui` y `landing`. |
+| `tests` | Pruebas de humo del workspace (MCP). |
+| `docs` | Producto, arquitectura, decisiones (ADR), validación e investigación. |
 
-### Contratos
+---
 
-| Módulo | Comando |
+## Instalación y desarrollo
+
+**Requisitos:** Node.js 24.22.1 (ver [`.node-version`](.node-version)) y pnpm 10.33.0. Para los contratos también necesitas Rust (versión fijada en `contracts/soroban/rust-toolchain.toml`) y Stellar CLI.
+
+```sh
+# Instalar el workspace con el lockfile fijado
+pnpm install --frozen-lockfile
+
+# Lint, typecheck, pruebas y build de todo el workspace
+pnpm check
+
+# API (http://127.0.0.1:4000/healthz) y PWA (http://localhost:3000), cada una en su terminal
+pnpm --filter @tilcai-wallet/api dev
+pnpm --filter @tilcai-wallet/web dev
+
+# Validar la configuración del worker
+pnpm --filter @tilcai-wallet/worker check
+
+# Servidor MCP por stdio (requiere WALLET_API_URL, WALLET_MCP_TOKEN y WALLET_MCP_CARD_ID)
+pnpm --filter @tilcai-wallet/mcp start
+
+# Contratos
+cd contracts/soroban && cargo test --workspace --lib --locked
+```
+
+**Base de datos.** La API usa PostgreSQL cuando se define `WALLET_API_DATABASE_URL`; en hosts remotos exige TLS con `sslmode=verify-full`.
+- Un administrador crea los roles con `infra/postgres/bootstrap-roles.sql`.
+- Las migraciones se aplican con `WALLET_MIGRATION_DATABASE_URL=... bash infra/postgres/migrate.sh`.
+- Para una base PostgreSQL 17 **desechable**, `WALLET_TEST_DATABASE_URL=... bash infra/postgres/test-db.sh` aplica las migraciones y ejecuta las pruebas de aislamiento.
+
+Detalles en [infra/postgres](infra/postgres/README.md). Las variables disponibles están en [`.env.example`](.env.example) y los modos del worker en [services/worker](services/worker/README.md).
+
+---
+
+## Seguridad
+
+TilcAI Wallet aplica defensa en profundidad. Ninguna capa se considera suficiente por sí sola:
+
+- **Cadena:** el contrato limita activo, destinatario, máximo por pago y gasto acumulado, independientemente de lo que pida el agente.
+- **Datos:** RLS forzada, tenant vinculado a la credencial verificada, roles mínimos sin `BYPASSRLS` y funciones `SECURITY DEFINER` con `search_path` fijado y sin ejecución para `PUBLIC`.
+- **Pagos:** idempotencia por clave y contenido, retención previa de presupuesto, un intento activo por orden, fencing por lease y confirmación únicamente con evidencia verificada. Ante cualquier incertidumbre, la orden queda pendiente y no se genera un cargo nuevo.
+- **Secretos:** firmante del agente y clave AEAD fuera del repositorio y de la base de datos, con verificación de permisos de archivo. Los tokens se guardan solo como hash.
+- **Verificación continua:** cada PR ejecuta en CI las pruebas del workspace, los contratos y las pruebas de integración contra PostgreSQL 17. Estas incluyen aislamiento entre tenants, permisos, concurrencia, reinicios y evidencia manipulada.
+
+Los riesgos conocidos y sus mitigaciones están documentados en [infra/postgres](infra/postgres/README.md), [services/worker](services/worker/README.md) y [Preflight Testnet](docs/testnet-preflight.md).
+
+---
+
+## Estado de integración
+
+| Módulo | Estado |
 | --- | --- |
-| [Soroban](contracts/soroban/README.md) | `cd contracts/soroban && cargo test --workspace --lib --locked` |
+| Contrato `WalletFoundation` en Testnet | Desplegado; pago de 0,50 USDC y rechazo por límite verificados en red (issue #5). |
+| API v1, idempotencia y recibos | Implementados; validados con PostgreSQL 17 en CI. |
+| RLS, roles y aislamiento multi-tenant | Implementados; validados con PostgreSQL 17 en CI. |
+| Worker: firma única, sobre cifrado, conciliación y entrega | Implementados; validados en CI con respuestas RPC controladas. |
+| Lectura del mismo recibo desde la API, el MCP y la PWA | Implementada; validada en CI. |
+| Canales móvil, extensión, Telegram, WhatsApp, CLI y TUI | Base disponible; conexión completa con la API v1 en curso. |
+| **Pagos reales en Stellar Testnet desde el backend** | **Pendientes de activación.** |
+
+La difusión de transacciones desde el worker sigue deshabilitada a propósito. Antes de activarla, el contrato debe vincular el destinatario a la operación que firma el agente: hoy `spend(amount)` toma el destinatario de la política, que el dueño puede cambiar. Después hará falta infraestructura dedicada (RPC, base de datos privada, firmante aislado y una instancia fondeada) y una autorización expresa.
+
+Hasta entonces, ningún recibo del backend corresponde a una liquidación en Stellar. Que el CI pase valida la lógica, no una liquidación real. El pago verificado en Testnet se ejecutó directamente contra el contrato, no a través del backend. [Preflight y pasos de activación](docs/testnet-preflight.md)
 
 ---
 
-## Cómo contribuir
+## Contribución y documentación
 
-1. Elige una tarea del checklist y crea una rama desde `main`.
-2. Trabaja solo en tu módulo con `pnpm --filter @tilcai-wallet/<módulo> …`.
-3. Ejecuta `pnpm check` antes de subir.
-4. Abre un PR. CI corre el workspace y los contratos.
+1. Crea una rama desde `main` y trabaja en tu módulo con `pnpm --filter @tilcai-wallet/<módulo> …`.
+2. Si cambias un endpoint, modifica en orden `api-contracts`, la API, el SDK y por último el cliente.
+3. Ejecuta las pruebas de tu módulo y abre un PR: el CI ejecuta el workspace, los contratos y PostgreSQL.
 
-¿Cambias un endpoint? Primero `api-contracts`, luego la API, luego el SDK y al final el cliente. Guía completa en [CONTRIBUTING](CONTRIBUTING.md).
-
----
-
-## Checklist del equipo
-
-El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega. Acordar primero el entorno y los esquemas, iniciar contratos e identidad en paralelo y preparar web móvil y MCP con datos de prueba.
-
-<details open>
-<summary><b>0. Base de desarrollo</b> · 3/4</summary>
-
-- [x] Crear workspace pnpm con dependencias fijadas y un único lockfile JavaScript.
-- [x] Preparar apps, adaptadores, API, worker, paquetes, Rust, comandos por módulo y CI.
-- [x] Agregar pruebas de humo de salud y MCP, y un test del contrato base.
-- [ ] Definir entornos, credenciales de testnet, activos y responsables mediante PR.
-
-</details>
-
-<details>
-<summary><b>1. Autoridad, API y persistencia</b> · 0/7</summary>
-
-- [ ] Modelar usuarios, tenants, sesiones lógicas, credenciales, tarjetas, políticas y recuperaciones.
-- [ ] Implementar alta, respaldo, WebAuthn, scopes, cierre y rotación.
-- [ ] Implementar intención de vínculo y fondeo con enlace de uso único.
-- [ ] Preparar Supabase Postgres para local y Testnet con migraciones, roles mínimos y RLS en tablas de tenant.
-- [ ] Persistir órdenes, intentos, idempotencia, retenciones, outbox e inbox. Probar la contención de API y worker.
-- [ ] Versionar OpenAPI y esquemas, autorizar por objeto y proyectar el estado confirmado.
-- [ ] Aislar el firmante delegado y medir despliegue y restauración de subcuentas.
-
-</details>
-
-<details>
-<summary><b>2. Compra directa y recibo</b> · 0/6</summary>
-
-- [ ] Confirmar la cuenta de contrato, factory, activo de prueba y proveedor.
-- [ ] Limitar activo, destino, monto, vigencia y gasto acumulado. Probar el rechazo directo en Soroban.
-- [ ] Implementar cotización, simulación de registro, firma aislada, simulación de verificación final, envío y conciliación por hash.
-- [ ] Conservar el pedido ante resultado incierto, cotización vencida o rechazo de presupuesto.
-- [ ] Registrar evidencia autenticada de entrega y emitir un recibo con ID estable.
-- [ ] Reconciliar eventos, cursor, entrega tardía, duplicados y costo. Probar reinicios antes y después del envío.
-
-</details>
-
-<details>
-<summary><b>3. Primera integración · web móvil y MCP stdio</b> · 0/5</summary>
-
-- [ ] Mostrar saldo distinguido del disponible, centro de sesiones, tarjetas y extracto.
-- [ ] Implementar herramientas para consultar presupuesto, pedir una compra, solicitar aumento y buscar recibo.
-- [ ] Aprobar el aumento con passkey y retomar la misma orden tras confirmar y revalidar.
-- [ ] Congelar, reactivar, revocar y devolver remanente con estados de confirmación.
-- [ ] Reproducir los dos pagos y los rechazos del [guion de demo](docs/demo.md).
-
-</details>
-
-<details>
-<summary><b>4. Canales adicionales · P1 y P2</b> · 0/6</summary>
-
-- [ ] **Móvil.** Confirmar compilaciones iOS/Android, enlaces verificados, passkeys y notificaciones.
-- [ ] **Extensión.** Revisar permisos por origen, mensajes, expiración, revocación y Chrome/Edge.
-- [ ] **MCP remoto.** Integrar Streamable HTTP y validar autenticación, scopes y cada cliente.
-- [ ] **Telegram.** Validar bot y Mini App, vínculo, avisos y retorno al panel seguro.
-- [ ] **CLI/TUI.** Añadir alta autorizada, estado de sesión, consultas y recibos.
-- [ ] **WhatsApp (P2).** Verificar compatibilidad del caso con Meta, plantillas y webhooks.
-
-</details>
-
-<details>
-<summary><b>5. Pruebas operativas y piloto</b> · 0/5</summary>
-
-- [ ] Probar aislamiento de tenants, dos tarjetas independientes y rotación sin reiniciar gasto.
-- [ ] Probar límites, revocación, resultados ambiguos, protección contra duplicados y retorno de fondos.
-- [ ] Evaluar x402 y MPP con la smart account y capacidades de fondeo mediante rutas validadas.
-- [ ] Medir costo, tiempo de conciliación, disponibilidad y disposición a pagar con agencias y freelancers.
-- [ ] Registrar demo, hashes, resultados y estado por canal. Probar restauración, custodia y operación antes de usar fondos reales.
-
-</details>
-
-<details>
-<summary><b>I+D. Autorización poscuántica en Stellar Testnet</b> · investigación en curso</summary>
-
-- [x] Documentar el alcance de CAP-87 y confirmar Protocolo 30 en Testnet.
-- [ ] Probar SDK y CLI compatibles y una autorización ML-DSA-44 en una subcuenta aislada.
-- [ ] Registrar pago de 0,50, rechazos de contrato y comparación con autorización clásica en Soroban.
-- [ ] Conciliar la evidencia y mostrar el alcance en el recibo experimental.
-
-[Tarea delegable](docs/research/post-quantum.md#tarea-delegable)
-
-</details>
-
----
-
-## Documentación
+Guía completa en [CONTRIBUTING](CONTRIBUTING.md).
 
 | Tema | Documento |
 | --- | --- |
-| Qué resuelve y ejemplo de uso | [Producto](docs/product.md) |
-| Orden de trabajo, dependencias y criterios por canal | [Prioridades del equipo](docs/roadmap.md) |
+| Producto y casos de uso | [Producto](docs/product.md) |
+| Prioridades y dependencias | [Roadmap](docs/roadmap.md) |
 | Capas y límites de cada módulo | [Arquitectura](docs/architecture.md) |
 | Versiones y fuentes oficiales | [Stack](docs/stack.md) |
 | Órdenes, intentos y conciliación | [Persistencia](docs/persistence.md) |
-| Pruebas, evidencias y controles por fase | [Validación](docs/validation.md) |
-| Por qué bot y MCP propios | [ADR 001](docs/adr/001-owned-channels.md) |
-| Herramientas y riel de pago de la demo | [ADR 002](docs/adr/002-toolchain-and-demo.md) |
-| Postgres, Storage y fronteras de acceso | [ADR 003](docs/adr/003-supabase-persistence.md) |
-| Paso a paso de la demo | [Guion de demo](docs/demo.md) |
-| Autorización de gasto con ML-DSA y alcance de la prueba | [Investigación poscuántica](docs/research/post-quantum.md) |
+| Pruebas y evidencias por fase | [Validación](docs/validation.md) |
+| Esquemas de la API v1 y entorno de referencia | [API v1](docs/demo-api.md) |
+| Guion de presentación | [Guion](docs/demo.md) |
+| Activación de pagos Testnet | [Preflight Testnet](docs/testnet-preflight.md) |
+| Contrato y evidencia en Testnet | [Soroban](contracts/soroban/README.md) |
+| Base de datos y roles | [infra/postgres](infra/postgres/README.md) |
+| Worker y modos de ejecución | [services/worker](services/worker/README.md) |
+| Decisiones de arquitectura | [ADR 001](docs/adr/001-owned-channels.md) · [ADR 002](docs/adr/002-toolchain-and-demo.md) · [ADR 003](docs/adr/003-supabase-persistence.md) |
+| Autorización poscuántica (línea de investigación) | [Investigación](docs/research/post-quantum.md) |
 
 [Organización en GitHub](https://github.com/TilcAI-Wallet)
