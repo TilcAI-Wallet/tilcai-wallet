@@ -11,6 +11,7 @@ import {
   setAgentPausedAction,
   setPref,
   setSessionActive,
+  simulatePurchaseAction,
 } from "@/app/actions";
 import type { Prefs } from "@/lib/auth";
 import { ActionButton, Toggle } from "./controls";
@@ -50,7 +51,17 @@ export const ResumeAgentButton = ({ agentId, className }: { agentId: string; cla
   </ActionButton>
 );
 
-export const PauseAgentButton = ({ agentId, name }: { agentId: string; name: string }) => (
+export const SimulatePurchaseButton = ({ agentId }: { agentId: string }) => (
+  <ActionButton
+    action={() => simulatePurchaseAction(agentId)}
+    busy="Pidiendo la compra…"
+    className="flex min-h-12 w-full items-center justify-center rounded-full border border-accent px-5 text-lg text-accent"
+  >
+    Simular compra del agente (0,50 USDC)
+  </ActionButton>
+);
+
+export const PauseAgentButton =({ agentId, name }: { agentId: string; name: string }) => (
   <ActionButton
     action={() => setAgentPausedAction(agentId, true)}
     busy="Pausando…"
