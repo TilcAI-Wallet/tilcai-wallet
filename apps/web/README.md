@@ -40,6 +40,22 @@ Recibos de prueba: `/receipts/rcp_demo_paid`, `/receipts/rcp_demo_pending`, `/re
 
 Al existir la API, solo `src/lib/wallet.ts` cambia: mismos métodos (`session`, `card`, `receipt`) y mismos tipos.
 
+## Conectar un agente de verdad (MCP)
+
+La web incluye un servidor MCP remoto (transporte HTTP, sin estado) en `/api/mcp/<código>`; el código también se acepta como `Authorization: Bearer <código>` en `/api/mcp`. «Nuevo agente» abre una vinculación con un código aleatorio de un solo uso (vence en 10 minutos), muestra el comando o la configuración lista para copiar y **espera la conexión real**: cuando el cliente MCP hace `initialize`, la app pasa sola al paso de aprobación. Hasta que la persona aprueba con passkey, las herramientas responden «conexión pendiente».
+
+| Herramienta | Qué hace |
+| --- | --- |
+| `get_wallet_status` | Tarjeta del agente: tope, gastado, disponible, máximo por compra |
+| `request_purchase` | Compra en USDC; rechazada si no hay tarjeta, está en pausa o supera máximo, tope o saldo |
+| `list_receipts` | Compras del agente |
+
+- **Claude Code:** `claude mcp add --transport http tilcai-wallet <URL>`.
+- **Codex:** en `~/.codex/config.toml`, `[mcp_servers.tilcai-wallet]` con `url = "<URL>"`.
+- **ChatGPT y Claude (app o web):** conector personalizado con la misma URL. Estos servicios llaman desde sus servidores, así que `localhost` no les sirve: hace falta una URL pública con HTTPS (despliegue o túnel).
+
+Límites conocidos: el estado vive en memoria (se pierde al reiniciar), no hay OAuth ni límite de peticiones (el código en la URL es la única credencial) y las compras son simuladas, no mueven fondos en Testnet. Probado con un cliente JSON-RPC propio que sigue la especificación, no con las apps de ChatGPT o Claude.
+
 ## Instalación PWA
 
 El manifiesto está en `src/app/manifest.ts` con iconos 192/512 y maskable. Instalar exige HTTPS salvo en `localhost`: para probar en un celular usa `pnpm --filter @tilcai-wallet/web exec next dev --webpack --experimental-https` o un túnel HTTPS. No hay service worker: la instalación solo necesita manifiesto y HTTPS, y el modo offline queda fuera de este corte.
