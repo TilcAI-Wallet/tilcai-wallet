@@ -39,7 +39,7 @@ export default function Landing() {
       <LandingHeader />
       <main>
         <LandingHero />
-        <section id="como-funciona" className="mx-auto max-w-6xl scroll-mt-6 px-6 py-24 md:px-10">
+        <section id="como-funciona" className="mx-auto max-w-6xl scroll-mt-6 px-6 pt-14 pb-24 md:px-10">
           <h2 className="max-w-xl text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Cómo funciona</h2>
           <ol className="mt-14 grid gap-x-10 gap-y-12 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, i) => (
