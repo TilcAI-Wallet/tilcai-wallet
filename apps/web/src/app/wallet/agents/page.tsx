@@ -1,22 +1,18 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { AgentPill } from "@/components/AgentPill";
 import { PauseAgentButton, ResumeAgentButton } from "@/components/actions";
 import { Icon } from "@/components/Icon";
 import { Page } from "@/components/ui";
-import { agentStatus, type Agent, type AgentStatus } from "@/lib/ledger";
+import { agentStatus, type Agent } from "@/lib/ledger";
 import { formatUsdc } from "@/lib/money";
 import { wallet } from "@/lib/wallet";
 
-const pill: Record<AgentStatus, { label: string; style: string }> = {
-  active: { label: "Activo", style: "bg-mint text-ink" },
-  paused: { label: "En pausa", style: "bg-mist text-ink" },
-  limit: { label: "Límite alcanzado", style: "bg-accent text-ink" },
-  setup: { label: "Sin tarjeta", style: "border border-ivory/70 text-ivory" },
-};
 const action = "flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-xl";
 
 function AgentCard({ agent }: { agent: Agent }) {
   const status = agentStatus(agent);
+  const cardHref = agent.linkedCard ? "/wallet/cards" : `/wallet/agents/${agent.id}`;
   const limit = BigInt(agent.limit);
   const percent = limit === 0n ? 100 : Math.min(100, Number((BigInt(agent.spent) * 100n) / limit));
   const detail = {
@@ -33,16 +29,10 @@ function AgentCard({ agent }: { agent: Agent }) {
           <Icon name={agent.icon} size={30} />
         </span>
         <div className="min-w-32 flex-1">
-          <h2 className="text-xl leading-tight">{agent.name}</h2>
+          <h2 className="text-xl leading-tight">{agent.card === null ? agent.name : <Link href={cardHref}>{agent.name}</Link>}</h2>
           <p className="text-sm text-muted">{agent.role}</p>
         </div>
-        <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm ${pill[status].style}`}>
-          {status === "active" && <span className="size-2 rounded-full bg-ink" />}
-          {status === "paused" && <Icon name="pause" size={16} strokeWidth={2.6} />}
-          {status === "limit" && <Icon name="alert" size={16} />}
-          {status === "setup" && <Icon name="card" size={16} />}
-          {pill[status].label}
-        </span>
+        <AgentPill status={status} />
       </div>
 
       <div className="flex items-baseline justify-between gap-3">
@@ -85,8 +75,8 @@ function AgentCard({ agent }: { agent: Agent }) {
       )}
       {status === "active" && (
         <>
-          <Link href={agent.linkedCard ? "/wallet/cards" : "/wallet/activity"} className={`${action} bg-accent/20 text-accent`}>
-            {agent.linkedCard ? "Ver tarjeta y límites" : "Ver actividad"}
+          <Link href={cardHref} className={`${action} bg-accent/20 text-accent`}>
+            Ver tarjeta y límites
             <Icon name="chevron" size={22} />
           </Link>
           <PauseAgentButton agentId={agent.id} name={agent.name} />
