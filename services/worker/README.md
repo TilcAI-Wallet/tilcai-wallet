@@ -1,24 +1,20 @@
-# Worker
+# Worker de prueba
 
-`pnpm --filter @tilcai-wallet/worker check` valida la configuración local. Próximos pasos: cursor de Stellar RPC, conciliación por hash, evidencia autenticada, outbox y monitoreo de TTL. Probar reinicios, entrega tardía y resultados RPC inciertos.
+`pnpm --filter @tilcai-wallet/worker check` valida la configuración y sale. El
+proceso está deshabilitado por defecto; `WORKER_MODE=fixture` y una conexión privada
+`WORKER_DATABASE_URL` permiten ejecutar `pnpm --filter @tilcai-wallet/worker start`.
+El login de conexión debe tener el rol `wallet_worker` y un administrador debe
+asignarlo a los tenants permitidos en `wallet_private.worker_assignments`. No se
+acepta un tenant por variables de entorno ni se concede lectura directa de la cola.
+El Session pooler debe conservar `session_user`; conexiones remotas requieren TLS
+con `sslmode=verify-full`.
 
-El worker usará Supabase Postgres y un rol dedicado. Reclama trabajo mediante un lease, aplica el contexto del tenant al operar sobre su orden y conserva `NOT_FOUND` como incierto hasta obtener evidencia del ledger. [Persistencia y recuperación](../../docs/persistence.md)
+El worker de fixture guarda su carga sintética en PostgreSQL, deduplica su envío
+simulado, recupera tras caducidad del lease y confirma el recibo como `mode: fixture`.
+No llama a Stellar, no firma, no usa `PaymentPort` ni constituye evidencia de red.
+La entrega queda pendiente. La implementación real necesita almacenamiento privado
+resoluble de sobres, firmante autorizado, comprobación de política y saldo RPC,
+conciliación por hash y el proveedor de prueba. No se habilita Testnet real.
 
-## Trabajo preparatorio de #6
-
-`payment-safety.ts` contiene comprobaciones puras de política y decisiones conservadoras
-para resultados inciertos. `payment-port.ts` define la separación entre política,
-preparación, envío y consulta. Todavía no existe implementación real de este puerto ni
-conexión a una cola o base de datos. Estas funciones no constituyen una ruta de pago:
-la política debe obtenerse de la red esperada justo antes del uso y la evidencia del
-resultado debe verificarse antes de actualizar cualquier estado. Ninguna transacción
-se prepara, firma o transmite desde el worker actual.
-
-`synthetic-payment.ts` es exclusivamente un doble de prueba en memoria. Sus hashes
-con prefijo `synthetic:` no son hashes Stellar ni evidencia de Testnet, y no se
-conecta al worker ejecutable. No implementa firma, red, leases ni reconciliación.
-
-`lease.ts` ofrece primitivas de reclamo por tenant con `SKIP LOCKED` y escritura
-condicionada al token de lease. Todavía no está conectada al proceso ejecutable ni
-al adaptador Stellar; no envía transacciones ni procesa entregas. Los tests de estas
-primitivas son unitarios y no prueban contención real ni reinicios con PostgreSQL.
+`RECONCILE_INTERVAL_MS` (250–60000) y `WORKER_LEASE_SECONDS` (1–300) acotan el
+sondeo y la duración del lease. No se deben registrar URLs, credenciales ni sobres.

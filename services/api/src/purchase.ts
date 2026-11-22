@@ -85,10 +85,11 @@ export function registerPurchase(app: FastifyInstance, pool?: Pool) {
     if (!result.rows[0]) notFound(); return {body:orderView(result.rows[0])};
   });
   route("GET", "/v1/receipts/:receiptId", "receipts:read", async (db,id,request) => {
-    const result = await db.query("SELECT r.receipt_id,o.* FROM wallet_private.receipts r JOIN wallet_private.orders o USING(tenant_id,network,order_id) WHERE r.tenant_id=$1 AND r.network=$2 AND o.session_id=$3 AND r.receipt_id=$4",[id.tenant_id,id.network,id.session_id,param(request,"receiptId")]);
+    const result = await db.query("SELECT r.receipt_id,r.tx_hash,r.ledger,o.* FROM wallet_private.receipts r JOIN wallet_private.orders o USING(tenant_id,network,order_id) WHERE r.tenant_id=$1 AND r.network=$2 AND o.session_id=$3 AND r.receipt_id=$4",[id.tenant_id,id.network,id.session_id,param(request,"receiptId")]);
     const row = result.rows[0]; if (!row) notFound();
-    if (!["pending", "uncertain"].includes(row.payment_state) || row.delivery_state !== "pending") throw new ApiFailure(503,"service_unavailable");
-    return { body: receiptSchema.parse({mode:"fixture",receiptId:row.receipt_id,orderId:row.order_id,sessionId:row.session_id,cardId:row.card_id,network:"testnet",assetContractId:stellarTestnetUsdc.contractId,sourceAddress:null,recipientAddress:recipient,amountMinor:row.amount,payment:{status:"pending"},delivery:{status:"pending"},refundStatus:row.refund_state}) };
+    if (!["pending", "uncertain", "confirmed", "failed"].includes(row.payment_state) || row.delivery_state !== "pending") throw new ApiFailure(503,"service_unavailable");
+    const payment = row.payment_state === "confirmed" ? {status:"confirmed",txHash:row.tx_hash,ledger:Number(row.ledger)} : row.payment_state === "failed" ? {status:"failed"} : {status:"pending"};
+    return { body: receiptSchema.parse({mode:"fixture",receiptId:row.receipt_id,orderId:row.order_id,sessionId:row.session_id,cardId:row.card_id,network:"testnet",assetContractId:stellarTestnetUsdc.contractId,sourceAddress:null,recipientAddress:recipient,amountMinor:row.amount,payment,delivery:{status:"pending"},refundStatus:row.refund_state}) };
   });
 }
 async function getCard(db: PoolClient,id: Identity,cardId: string,lock: boolean) {
@@ -104,7 +105,7 @@ function cardView(card: any, held: bigint) {
   return cardSchema.parse({mode:"fixture",cardId:card.card_id,sessionId:card.session_id,name:card.display_name,status:"active",asset:stellarTestnetUsdc,accountAddress:null,balanceMinor:card.balance_minor,perPaymentLimitMinor:card.payment_limit_minor,totalLimitMinor:card.total_limit_minor,spentMinor:card.spent_minor,availableMinor:(available > 0n ? available : 0n).toString()});
 }
 function orderView(order: any) {
-  if (!["pending", "uncertain", "failed"].includes(order.payment_state)) throw new ApiFailure(503, "service_unavailable");
-  const status = order.payment_state === "failed" ? "failed" : "payment_pending";
+  if (!["pending", "uncertain", "confirmed", "failed"].includes(order.payment_state) || order.delivery_state !== "pending") throw new ApiFailure(503, "service_unavailable");
+  const status = order.payment_state === "failed" ? "failed" : order.payment_state === "confirmed" ? "paid" : "payment_pending";
   return orderSchema.parse({mode:"fixture",orderId:order.order_id,cardId:order.card_id,sessionId:order.session_id,offerId:order.offer_id,amountMinor:order.amount,status,receiptId:order.receipt_id ?? null});
 }
