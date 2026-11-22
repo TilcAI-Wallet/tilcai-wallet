@@ -34,12 +34,12 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-5 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
       {receipt.state === "payment_pending" && <AutoRefresh />}
-      <Link href="/" className="flex min-h-11 items-center font-semibold text-accent">
+      <Link href="/wallet/cards" className="flex min-h-11 items-center text-accent">
         ← Tarjeta
       </Link>
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold tracking-tight">{receipt.description}</h1>
-        <p className="text-3xl font-semibold">{formatUsdc(receipt.amount)}</p>
+        <h1 className="text-3xl tracking-tight">{receipt.description}</h1>
+        <p className="text-3xl">{formatUsdc(receipt.amount)}</p>
         <div>
           <SimulatedBadge simulated={receipt.simulated} />
         </div>
@@ -47,21 +47,21 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       <section className={section} aria-labelledby="pay">
         <div className="flex items-center justify-between">
-          <h2 id="pay" className="font-semibold">
+          <h2 id="pay">
             Pago
           </h2>
           <StatusPill tone={payTone}>{payLabel}</StatusPill>
         </div>
         {receipt.payment.txHash ? (
           <>
-            <p className="break-all font-mono text-xs text-muted">{receipt.payment.txHash}</p>
+            <p className="break-all text-sm text-muted">{receipt.payment.txHash}</p>
             <p className="text-sm text-muted">Ledger {receipt.payment.ledger}</p>
             {receipt.payment.explorerUrl && (
               <a
                 href={receipt.payment.explorerUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex min-h-11 items-center justify-center rounded-full bg-accent px-4 font-semibold text-white"
+                className="flex min-h-11 items-center justify-center rounded-full bg-accent px-4 text-ink"
               >
                 Ver transacción en Stellar Expert
               </a>
@@ -76,17 +76,17 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
 
       <section className={section} aria-labelledby="delivery">
         <div className="flex items-center justify-between">
-          <h2 id="delivery" className="font-semibold">
+          <h2 id="delivery">
             Entrega
           </h2>
           <StatusPill tone={delTone}>{delLabel}</StatusPill>
         </div>
         <p className="text-sm text-muted">Evidencia del proveedor: {receipt.delivery.provider}</p>
         {receipt.delivery.deliveryId && <p className="text-sm">ID de entrega: {receipt.delivery.deliveryId}</p>}
-        {receipt.delivery.digest && <p className="break-all font-mono text-xs text-muted">{receipt.delivery.digest}</p>}
+        {receipt.delivery.digest && <p className="break-all text-sm text-muted">{receipt.delivery.digest}</p>}
       </section>
 
-      <p className="text-xs text-muted">
+      <p className="text-sm text-muted">
         Orden {receipt.orderId} · Stellar {receipt.network === "testnet" ? "Testnet" : "Mainnet"}
       </p>
     </main>
