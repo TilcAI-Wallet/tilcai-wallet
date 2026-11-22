@@ -8,6 +8,8 @@ La portada vive en `src/app/landing-hero.tsx` y usa el logotipo, los colores y l
 
 La copia de Bargain se carga desde `public/brand/bargain.otf` cuando está presente. El archivo se mantiene fuera de Git y la compilación usa Schibsted Grotesk si falta. Para un despliegue con Bargain, usa la copia cubierta por la [licencia web de Sensatype](https://www.sensatype.com/license).
 
+Los grabados de Claude Code, Codex, OpenCode y Grok Bot vienen de la sección Stack del [portafolio de Omar](https://github.com/OmarQV/omidev). Los tres primeros usan geometrías de [Lobe Icons](https://github.com/lobehub/lobe-icons). La versión de Grok Bot del portafolio es un trazado. Las marcas pertenecen a sus respectivos titulares. [Licencia MIT](public/brand/lobe-icons-license.txt)
+
 - [ ] Reemplazar el enlace del piloto por un formulario o correo del equipo.
 - [ ] Añadir capturas o video de la demo cuando el flujo en testnet esté listo.
 - [ ] Elegir dominio y hosting.
