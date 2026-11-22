@@ -11,6 +11,7 @@ const pill: Record<AgentStatus, { label: string; style: string }> = {
   active: { label: "Activo", style: "bg-mint text-ink" },
   paused: { label: "En pausa", style: "bg-mist text-ink" },
   limit: { label: "Límite alcanzado", style: "bg-accent text-ink" },
+  setup: { label: "Sin tarjeta", style: "border border-ivory/70 text-ivory" },
 };
 const action = "flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-5 text-xl";
 
@@ -22,6 +23,7 @@ function AgentCard({ agent }: { agent: Agent }) {
     active: `Gastado ${percent}% de ${formatUsdc(agent.limit)}`,
     paused: "Pausado por el usuario",
     limit: "Tope acumulado alcanzado",
+    setup: "Sin acceso a fondos",
   }[status];
 
   return (
@@ -38,6 +40,7 @@ function AgentCard({ agent }: { agent: Agent }) {
           {status === "active" && <span className="size-2 rounded-full bg-ink" />}
           {status === "paused" && <Icon name="pause" size={16} strokeWidth={2.6} />}
           {status === "limit" && <Icon name="alert" size={16} />}
+          {status === "setup" && <Icon name="card" size={16} />}
           {pill[status].label}
         </span>
       </div>
@@ -60,15 +63,20 @@ function AgentCard({ agent }: { agent: Agent }) {
       <p className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ivory/85">
         <span className="flex items-center gap-2 whitespace-nowrap">
           <Icon name="card" size={22} />
-          Tarjeta: <span className="font-data">{agent.card}</span>
+          Tarjeta: {agent.card ? <span className="font-data">{agent.card}</span> : "sin activar"}
         </span>
         <span className="flex items-center gap-2 whitespace-nowrap">
           <Icon name="layers" size={22} />
-          {status === "limit" ? `Uso: ${percent}% (límite: ${formatUsdc(agent.limit)})` : `Máx. por compra: ${formatUsdc(agent.maxPerPurchase)}`}
+          {status === "setup" ? "Máx. por compra: sin definir" : status === "limit" ? `Uso: ${percent}% (límite: ${formatUsdc(agent.limit)})` : `Máx. por compra: ${formatUsdc(agent.maxPerPurchase)}`}
         </span>
       </p>
 
       {status === "paused" && <ResumeAgentButton agentId={agent.id} className={`${action} bg-accent text-ink`} />}
+      {status === "setup" && (
+        <Link href={`/wallet/agents/${agent.id}/card`} className={`${action} bg-accent text-ink`}>
+          Configurar tarjeta
+        </Link>
+      )}
       {status === "limit" && (
         <Link href="/wallet/fund" className={`${action} bg-accent text-ink`}>
           <Icon name="wallet" size={26} />
