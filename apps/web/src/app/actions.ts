@@ -3,7 +3,8 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPrefs, prefsCookie, requireSession, sessionCookie, type Method, type Prefs } from "@/lib/auth";
-import { configureAgentCard, connectAgent, fund, LedgerError, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
+import { randomBytes } from "node:crypto";
+import { approvePairing, configureAgentCard, createPairing, findPairing, fund, LedgerError, rejectPairing, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
 import { parseUsdc } from "@/lib/money";
 import { demoAddress, isStellarAddress } from "@/lib/stellar";
 import { parseUsername } from "@/lib/username";
@@ -58,8 +59,28 @@ export async function sendTransfer(to: string, amountText: string): Promise<Resu
   });
 }
 
-export async function connectAgentAction(client: string, alias: string): Promise<Result> {
-  return guard(() => ({ ok: true, id: connectAgent(store(), client, alias, new Date()) }));
+export type PairingStatus = "waiting" | "connected" | "approved" | "missing";
+
+/** Abre una vinculación con un código aleatorio de un solo uso; devuelve el código en `id`. */
+export async function createPairingAction(client: string, alias: string, previous?: string): Promise<Result> {
+  return guard(() => {
+    const code = `tl_${randomBytes(18).toString("base64url")}`;
+    return { ok: true, id: createPairing(store(), client, alias, code, new Date(), previous) };
+  });
+}
+
+/** ¿Ya se conectó el agente? La pantalla lo consulta mientras espera. */
+export async function pairingStatusAction(code: string): Promise<PairingStatus> {
+  await requireSession();
+  return findPairing(store(), code, new Date())?.status ?? "missing";
+}
+
+export async function approvePairingAction(code: string): Promise<Result> {
+  return guard(() => ({ ok: true, id: approvePairing(store(), code, new Date()) }));
+}
+
+export async function rejectPairingAction(code: string): Promise<Result> {
+  return guard(() => rejectPairing(store(), code));
 }
 
 export async function configureAgentCardAction(agentId: string, limitText: string, maxText: string): Promise<Result> {

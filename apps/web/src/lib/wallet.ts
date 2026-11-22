@@ -5,7 +5,11 @@ export class WalletNotFoundError extends Error {}
 
 // Estado del demo en el servidor; `globalThis` lo comparte entre rutas, páginas y acciones en dev.
 const shared = globalThis as typeof globalThis & { __tilcaiStore?: Store };
-export const store = (): Store => (shared.__tilcaiStore ??= createStore());
+export const store = (): Store => {
+  const current = (shared.__tilcaiStore ??= createStore());
+  current.pairings ??= []; // un estado guardado antes de existir las vinculaciones (recarga en caliente)
+  return current;
+};
 export const resetDemo = () => void (shared.__tilcaiStore = createStore());
 /** Para `POST /api/mock/pay|reset`: lleva la tarjeta de "antes" a "después" del pago de 0,50 USDC. */
 export function setDemoPaid(paid: boolean) {
