@@ -13,11 +13,12 @@ type StoryProps = {
   className: string;
   slides: readonly Slide[];
   backdrop?: (slide: number) => ReactNode;
+  children?: ReactNode;
 };
 
 const motionQuery = "(prefers-reduced-motion: no-preference) and (min-height: 700px)";
 
-export function ScrollStory({ id, title, note, className, slides, backdrop }: StoryProps) {
+export function ScrollStory({ id, title, note, className, slides, backdrop, children }: StoryProps) {
   const track = useRef<HTMLDivElement>(null);
   const rail = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
@@ -105,6 +106,7 @@ export function ScrollStory({ id, title, note, className, slides, backdrop }: St
           {slides.map(({ label }) => <div className={styles.beat} key={label} />)}
         </div>
       </div>
+      {children}
     </section>
   );
 }

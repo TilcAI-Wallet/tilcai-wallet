@@ -2,6 +2,7 @@
 
 import { CreditCard, LockKeyhole, ReceiptText, ShoppingBag } from "lucide-react";
 import { ScrollStory } from "../story/scroll-story";
+import { AppTabs } from "./app-tabs";
 import { ParticleStage } from "./particle-stage";
 import { PhoneSession } from "./phone-session";
 import { walkthroughSteps } from "./walkthrough-steps";
@@ -33,6 +34,8 @@ export function Walkthrough() {
           ),
         };
       })}
-    />
+    >
+      <AppTabs />
+    </ScrollStory>
   );
 }
