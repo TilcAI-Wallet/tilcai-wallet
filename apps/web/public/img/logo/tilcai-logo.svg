@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="46 30 304 280" role="img" aria-label="TilcAI Wallet">
+  <defs>
+    <mask id="eyes" maskUnits="userSpaceOnUse" x="46" y="30" width="304" height="280">
+      <rect x="46" y="30" width="304" height="280" fill="#fff" />
+      <rect x="135" y="181" width="30" height="70" rx="15" fill="#000" />
+      <rect x="230" y="175" width="31" height="70" rx="15.5" fill="#000" />
+    </mask>
+  </defs>
+  <path
+    mask="url(#eyes)"
+    fill="#0c0d0f"
+    stroke="#0c0d0f"
+    stroke-width="14"
+    stroke-linejoin="round"
+    d="M88 94 L136 138 L243 129 L336 45 L318 245 Q314 275 282 279 L100 296 Q58 296 58 268 L58 180 Q58 172 62 164 Z"
+  />
+</svg>
