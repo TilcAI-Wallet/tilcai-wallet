@@ -54,6 +54,8 @@ La web incluye un servidor MCP remoto (transporte HTTP, sin estado) en `/api/mcp
 - **Codex:** en `~/.codex/config.toml`, `[mcp_servers.tilcai-wallet]` con `url = "<URL>"`.
 - **ChatGPT y Claude (app o web):** conector personalizado con la misma URL. Estos servicios llaman desde sus servidores, así que `localhost` no les sirve: hace falta una URL pública con HTTPS (despliegue o túnel).
 
+Desde el celular, el paso 2 trae «Abrir Claude» y «Abrir ChatGPT» (enlaces universales: abren la app instalada o, si no está, la web) y copian la URL para pegarla al crear el conector. «Simular conexión del agente» hace que el propio servidor actúe como cliente MCP, y en la tarjeta de un agente conectado «Simular compra» pide 0,50 USDC por el mismo camino, para ver todo el ciclo sin salir de la PWA.
+
 Límites conocidos: el estado vive en memoria (se pierde al reiniciar), no hay OAuth ni límite de peticiones (el código en la URL es la única credencial) y las compras son simuladas, no mueven fondos en Testnet. Probado con un cliente JSON-RPC propio que sigue la especificación, no con las apps de ChatGPT o Claude.
 
 ## Instalación PWA
