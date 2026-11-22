@@ -6,6 +6,7 @@ import { getPrefs, prefsCookie, requireSession, sessionCookie, type Method, type
 import { fund, LedgerError, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
 import { parseUsdc } from "@/lib/money";
 import { demoAddress, isStellarAddress } from "@/lib/stellar";
+import { parseUsername } from "@/lib/username";
 import { resetDemo, store } from "@/lib/wallet";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
@@ -23,8 +24,14 @@ const guard = async (run: () => Result | void): Promise<Result> => {
   }
 };
 
-export async function login(method: Method): Promise<void> {
+export async function login(method: Method, username?: string): Promise<Result> {
+  if (username !== undefined) {
+    const parsed = parseUsername(username);
+    if (!parsed.ok) return parsed;
+    store().ownerName = parsed.value;
+  }
   (await cookies()).set(sessionCookie, method, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  return { ok: true };
 }
 
 export async function logout(): Promise<void> {

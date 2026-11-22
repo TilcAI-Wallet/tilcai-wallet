@@ -4,7 +4,6 @@ import { PasskeyFlow } from "@/components/onboarding";
 import { Screen } from "@/components/Screen";
 import { WalletArt } from "@/components/WalletArt";
 import { getSession } from "@/lib/auth";
-import { wallet } from "@/lib/wallet";
 
 const benefits = ["Más rápido que una contraseña", "Más seguro para aprobar compras", "Recuperación simplificada"];
 
@@ -12,7 +11,6 @@ export default async function Passkey({ searchParams }: { searchParams: Promise<
   const { mode, next } = await searchParams;
   const login = mode === "login";
   const hasSession = (await getSession()) !== null;
-  const { owner } = await wallet.session();
 
   return (
     <Screen>
@@ -30,7 +28,7 @@ export default async function Passkey({ searchParams }: { searchParams: Promise<
         </p>
       </section>
       <WalletArt icons={["face", "fingerprint", "shield"]} className="mx-auto w-32" />
-      <PasskeyFlow mode={login ? "login" : "create"} hasSession={hasSession} ownerName={owner} />
+      <PasskeyFlow mode={login ? "login" : "create"} hasSession={hasSession} />
       {!login && (
         <ul className="flex flex-col gap-2">
           {benefits.map((text) => (

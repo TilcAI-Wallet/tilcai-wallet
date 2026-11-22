@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { login } from "@/app/actions";
+import { login, renameOwner } from "@/app/actions";
 import { createPasskey, describeDevice, verifyPasskey } from "@/lib/passkey";
 import { isStellarSecret } from "@/lib/stellar";
+import { parseUsername } from "@/lib/username";
 import { Icon, type IconName } from "./Icon";
 import { QrArt } from "./QrArt";
 import { primaryButton, secondaryButton } from "./Screen";
@@ -51,10 +52,12 @@ export function ConnectOptions({ returning }: { returning: boolean }) {
 
 type Phase = "idle" | "working" | "cancelled" | "error" | "none" | "done";
 
-export function PasskeyFlow({ mode, hasSession, ownerName }: { mode: "create" | "login"; hasSession: boolean; ownerName: string }) {
+export function PasskeyFlow({ mode, hasSession }: { mode: "create" | "login"; hasSession: boolean }) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const [note, setNote] = useState<string | null>(null);
+  const [username, setUsername] = useState("");
+  const [touched, setTouched] = useState(false);
   const userAgent = useSyncExternalStore(
     () => () => undefined,
     () => navigator.userAgent,
@@ -62,20 +65,43 @@ export function PasskeyFlow({ mode, hasSession, ownerName }: { mode: "create" | 
   );
   const device = describeDevice(userAgent);
 
+  const parsed = parseUsername(username);
+
   async function run() {
+    if (mode === "create" && !parsed.ok) return setTouched(true);
     setPhase("working");
     setNote(null);
-    const result = mode === "create" ? await createPasskey(ownerName) : await verifyPasskey();
+    const result = mode === "create" && parsed.ok ? await createPasskey(parsed.value) : await verifyPasskey();
     if (!result.ok) return setPhase(result.reason);
     if (result.simulated) setNote("Este navegador no admite passkeys reales; se simuló la verificación.");
     setPhase("done");
-    if (!hasSession) await login("passkey");
+    if (mode === "create" && parsed.ok) {
+      if (hasSession) await renameOwner(parsed.value);
+      else await login("passkey", parsed.value);
+    } else if (!hasSession) await login("passkey");
     setTimeout(() => router.push("/wallet"), result.simulated ? 1400 : 500);
   }
 
   const busy = phase === "working" || phase === "done";
   return (
     <>
+      {mode === "create" && (
+        <Field
+          label="Nombre de usuario"
+          hint="Tu passkey se crea con este nombre."
+          name="username"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={20}
+          placeholder="ej. ana.paz"
+          disabled={busy}
+          value={username}
+          onChange={(e) => setUsername(e.target.value.replace(/s/g, ""))}
+          onBlur={() => setTouched(true)}
+          error={touched && !parsed.ok ? parsed.error : null}
+        />
+      )}
       {mode === "create" && (
         <dl className="divide-y divide-ivory/25 rounded-3xl border border-ivory/70 px-4">
           {[
@@ -99,7 +125,7 @@ export function PasskeyFlow({ mode, hasSession, ownerName }: { mode: "create" | 
       {phase === "done" && <Banner tone="ok">{mode === "create" ? "Passkey creado. Abriendo tu wallet…" : "Verificado. Abriendo tu wallet…"}</Banner>}
       {note && <Banner tone="info">{note}</Banner>}
       <div className="flex flex-col gap-3">
-        <button type="button" disabled={busy} onClick={run} className={`${primaryButton} disabled:opacity-70`}>
+        <button type="button" disabled={busy || (mode === "create" && !parsed.ok)} onClick={run} className={`${primaryButton} disabled:opacity-50`}>
           {phase === "working" ? "Esperando a tu dispositivo…" : mode === "create" ? "Crear passkey" : "Usar passkey"}
         </button>
         {mode === "login" && phase === "none" && (
