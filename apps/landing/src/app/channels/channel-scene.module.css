@@ -21,6 +21,15 @@
   font-size: .79rem;
   font-weight: 600;
 }
+.copy > a {
+  display: inline-block;
+  margin-top: .55rem;
+  color: #f0defe;
+  font-size: .83rem;
+  text-decoration: underline;
+  text-underline-offset: .2em;
+}
+.copy > a:focus-visible { outline-color: #c8a6ff; }
 .preview { display: grid; place-items: center; min-width: 0; }
 
 @media (max-width: 700px) {
