@@ -1,6 +1,6 @@
 import { equal, throws } from "node:assert/strict";
 import { test } from "node:test";
-import { agentsView, agentStatus, available, createStore, fund, LedgerError, payAgent, resolveRequest, setAgentPaused, setCodexSession, transfer, codexAgentId } from "./ledger.ts";
+import { agentsView, agentStatus, available, configureAgentCard, connectAgent, createStore, fund, LedgerError, payAgent, resolveRequest, setAgentPaused, setCodexSession, transfer, codexAgentId } from "./ledger.ts";
 
 const now = new Date("2026-11-22T10:00:00.000Z");
 
@@ -57,4 +57,19 @@ test("agent status: Codex follows its card, the others are paused or at their li
   equal(status()[codexAgentId], "active"); // el tope subió a 1,00
   setAgentPaused(store, codexAgentId, true);
   equal(status()[codexAgentId], "paused");
+});
+
+test("a connected agent has no funds access until its card is configured", () => {
+  const store = createStore();
+  const id = connectAgent(store, "claude", "  Claude · Portátil ", now);
+  const status = () => agentStatus(agentsView(store).find((agent) => agent.id === id)!);
+  equal(status(), "setup");
+  equal(store.agents.find((agent) => agent.id === id)!.name, "Claude · Portátil");
+  throws(() => connectAgent(store, "claude", "claude · portátil", now), LedgerError); // alias repetido
+  throws(() => connectAgent(store, "otro", "Alias", now), LedgerError);
+  throws(() => connectAgent(store, "codex", "A", now), LedgerError);
+  throws(() => configureAgentCard(store, id, 1_000_000n, 2_000_000n, now), LedgerError); // máximo > tope
+  configureAgentCard(store, id, 500_000_000n, 100_000_000n, now);
+  equal(status(), "active");
+  throws(() => configureAgentCard(store, id, 1n, 1n, now), LedgerError); // ya tiene tarjeta
 });

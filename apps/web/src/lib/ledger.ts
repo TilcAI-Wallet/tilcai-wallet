@@ -16,17 +16,17 @@ export type Agent = {
   id: string;
   name: string;
   role: string;
-  icon: "agent" | "bars";
+  icon: "agent" | "bars" | "laptop";
   paused: boolean;
   linkedCard: boolean;
-  /** Código de su tarjeta. */
-  card: string;
+  /** Código de su tarjeta; `null` mientras no tenga una activada. */
+  card: string | null;
   /** Tope acumulado, gastado y máximo por compra, en unidades atómicas. */
   limit: string;
   spent: string;
   maxPerPurchase: string;
 };
-export type AgentStatus = "active" | "paused" | "limit";
+export type AgentStatus = "active" | "paused" | "limit" | "setup";
 export type AgentSession = { id: string; agentId: string; title: string; state: "active" | "ended"; startedAt: string };
 export type CardState = "active" | "frozen";
 
@@ -84,6 +84,7 @@ export function available(store: Store): bigint {
 /** Estado que ve la persona: en pausa, con el tope agotado o activo. */
 export function agentStatus(agent: Agent): AgentStatus {
   if (agent.paused) return "paused";
+  if (agent.card === null) return "setup";
   return BigInt(agent.spent) >= BigInt(agent.limit) ? "limit" : "active";
 }
 
@@ -131,6 +132,38 @@ export function resolveRequest(store: Store, noticeId: string, approve: boolean)
   if (approve) store.cap += BigInt(request.extra);
   const notice = store.notices.find((n) => n.id === noticeId)!;
   notice.read = true;
+}
+
+export const agentClients = {
+  claude: { name: "Claude Code", role: "Agente de Anthropic para desarrollo y tareas" },
+  codex: { name: "Codex", role: "Agente de OpenAI para desarrollo y automatización" },
+} as const;
+export type AgentClient = keyof typeof agentClients;
+
+/** Vincula un agente nuevo: queda con acceso de lectura y sin tarjeta, o sea sin acceso a fondos. */
+export function connectAgent(store: Store, client: string, alias: string, now: Date) {
+  if (!Object.hasOwn(agentClients, client)) throw new LedgerError("Elige un cliente: Claude Code o Codex.");
+  const name = alias.trim().replace(/s+/g, " ");
+  if (name.length < 2 || name.length > 30) throw new LedgerError("El alias debe tener entre 2 y 30 caracteres.");
+  if (store.agents.some((agent) => agent.name.toLowerCase() === name.toLowerCase())) throw new LedgerError("Ya tienes un agente con ese alias.");
+  const id = nextId(store, "agt");
+  store.agents.push({ id, name, role: agentClients[client as AgentClient].role, icon: "laptop", paused: false, linkedCard: false, card: null, limit: "0", spent: "0", maxPerPurchase: "0" });
+  store.notices.unshift({ id: nextId(store, "ntf"), title: "Agente conectado", body: `${name} quedó vinculado. Configura su tarjeta y límites para que pueda comprar.`, at: now.toISOString(), read: false });
+  return id;
+}
+
+/** Activa la tarjeta de un agente recién conectado con su tope acumulado y su máximo por compra. */
+export function configureAgentCard(store: Store, agentId: string, limit: bigint, maxPerPurchase: bigint, now: Date) {
+  const agent = store.agents.find((a) => a.id === agentId);
+  if (!agent) throw new LedgerError("Agente desconocido.");
+  if (agent.card !== null) throw new LedgerError("Este agente ya tiene una tarjeta.");
+  if (limit <= 0n || maxPerPurchase <= 0n) throw new LedgerError("Los montos deben ser mayores que cero.");
+  if (maxPerPurchase > limit) throw new LedgerError("El máximo por compra no puede superar el tope acumulado.");
+  const suffix = ((++store.counter * 2654435761) >>> 0).toString(36).toUpperCase().slice(0, 4).padEnd(4, "0");
+  agent.card = `AG-${suffix}`;
+  agent.limit = limit.toString();
+  agent.maxPerPurchase = maxPerPurchase.toString();
+  store.notices.unshift({ id: nextId(store, "ntf"), title: "Tarjeta activada", body: `${agent.name} ya puede comprar dentro de sus límites.`, at: now.toISOString(), read: false });
 }
 
 export function setAgentPaused(store: Store, agentId: string, paused: boolean) {
