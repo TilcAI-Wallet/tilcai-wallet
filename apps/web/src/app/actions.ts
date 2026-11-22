@@ -4,11 +4,11 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPrefs, prefsCookie, requireSession, sessionCookie, type Method, type Prefs } from "@/lib/auth";
 import { randomBytes } from "node:crypto";
-import { approvePairing, configureAgentCard, createPairing, findPairing, fund, LedgerError, rejectPairing, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
+import { agentPurchase, approvePairing, configureAgentCard, createPairing, findPairing, fund, LedgerError, rejectPairing, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
 import { parseUsdc } from "@/lib/money";
 import { demoAddress, isStellarAddress } from "@/lib/stellar";
 import { parseUsername } from "@/lib/username";
-import { resetDemo, store } from "@/lib/wallet";
+import { commit, resetDemo, store } from "@/lib/wallet";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -17,6 +17,7 @@ const guard = async (run: () => Result | void): Promise<Result> => {
   await requireSession();
   try {
     const result = run();
+    commit();
     refresh();
     return result ?? { ok: true };
   } catch (error) {
@@ -30,6 +31,7 @@ export async function login(method: Method, username?: string): Promise<Result> 
     const parsed = parseUsername(username);
     if (!parsed.ok) return parsed;
     store().ownerName = parsed.value;
+    commit();
   }
   (await cookies()).set(sessionCookie, method, { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
   return { ok: true };
@@ -81,6 +83,20 @@ export async function approvePairingAction(code: string): Promise<Result> {
 
 export async function rejectPairingAction(code: string): Promise<Result> {
   return guard(() => rejectPairing(store(), code));
+}
+
+/** Marca la vinculación como conectada: la persona ya agregó el conector en su app y quiere seguir. */
+export async function confirmConnectionAction(code: string): Promise<Result> {
+  return guard(() => {
+    const pairing = findPairing(store(), code, new Date());
+    if (!pairing) return { ok: false, error: "El código venció. Vuelve atrás para generar uno nuevo." };
+    if (pairing.status === "waiting") pairing.status = "connected";
+  });
+}
+
+/** Compra de prueba de 0,50 USDC con la tarjeta del agente, respetando todos sus límites. */
+export async function testPurchaseAction(agentId: string): Promise<Result> {
+  return guard(() => ({ ok: true, id: agentPurchase(store(), agentId, 5_000_000n, "Compra de prueba", new Date()) }));
 }
 
 export async function configureAgentCardAction(agentId: string, limitText: string, maxText: string): Promise<Result> {
