@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AgentPill } from "@/components/AgentPill";
-import { PauseAgentButton, ResumeAgentButton } from "@/components/actions";
+import { PauseAgentButton, ResumeAgentButton, TestPurchaseButton } from "@/components/actions";
 import { Icon } from "@/components/Icon";
 import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { Page, PageHeader } from "@/components/ui";
@@ -51,6 +51,7 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
           </div>
         ))}
       </dl>
+      {status === "active" && <TestPurchaseButton agentId={agent.id} />}
       {status === "paused" ? (
         <ResumeAgentButton agentId={agent.id} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-accent px-5 text-xl text-ink" />
       ) : (

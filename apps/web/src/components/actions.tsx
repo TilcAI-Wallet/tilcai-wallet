@@ -11,6 +11,7 @@ import {
   setAgentPausedAction,
   setPref,
   setSessionActive,
+  testPurchaseAction,
 } from "@/app/actions";
 import type { Prefs } from "@/lib/auth";
 import { ActionButton, Toggle } from "./controls";
@@ -47,6 +48,16 @@ export const ResumeAgentButton = ({ agentId, className }: { agentId: string; cla
       <Icon name="play" size={22} strokeWidth={2} />
       Reanudar
     </>
+  </ActionButton>
+);
+
+export const TestPurchaseButton = ({ agentId }: { agentId: string }) => (
+  <ActionButton
+    action={() => testPurchaseAction(agentId)}
+    busy="Comprando…"
+    className="flex min-h-12 w-full items-center justify-center rounded-full border border-accent px-5 text-lg text-accent"
+  >
+    Probar compra (0,50 USDC)
   </ActionButton>
 );
 
