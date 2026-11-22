@@ -23,6 +23,22 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+@keyframes sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+.install-sheet {
+  animation: sheet-in 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .install-sheet {
+    animation: none;
+  }
+}
+
 /* Excepción a «solo Bargain»: en Bargain las mayúsculas X e Y se ven intercambiadas. Direcciones y claves usan monoespaciada. */
 .font-data {
   font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;

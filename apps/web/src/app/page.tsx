@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Icon } from "@/components/Icon";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { Lockup } from "@/components/Logo";
 import { primaryButton, Screen, secondaryButton } from "@/components/Screen";
 import { WalletArt } from "@/components/WalletArt";
@@ -39,6 +40,7 @@ export default async function Welcome() {
         <span className="h-5 w-px bg-ivory/40" />
         Seguro con passkeys y control humano
       </p>
+      <InstallPrompt />
     </Screen>
   );
 }
