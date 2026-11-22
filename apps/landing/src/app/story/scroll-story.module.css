@@ -1,5 +1,6 @@
 .track {
   --stage-height: 100svh;
+  --device-height: min(77svh, 48rem);
   --beat-height: clamp(16rem, 60svh, 32rem);
 }
 
@@ -11,7 +12,7 @@
 .shell {
   width: min(100% - 3rem, 76rem);
   margin-inline: auto;
-  padding-block: clamp(1.4rem, 4vh, 2.6rem);
+  padding-block: clamp(.85rem, 2vh, 1.8rem);
 }
 
 .heading {
@@ -63,5 +64,10 @@
 }
 
 @media (max-width: 700px) {
+  .track { --device-height: min(61svh, 37rem); }
   .shell { width: min(100% - 2rem, 32rem); }
+}
+
+@media (max-width: 360px) {
+  .track { --device-height: min(58svh, 34rem); }
 }
