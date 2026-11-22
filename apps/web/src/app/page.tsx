@@ -24,7 +24,7 @@ export default async function Welcome() {
         </h1>
         <p className="text-base text-ivory/75">Gestiona sesiones, asigna presupuestos y controla compras de IA con total claridad.</p>
       </section>
-      <WalletArt icons={["robot", "code", "headset"]} className="mx-auto min-h-0 w-full max-w-[17rem] flex-1" />
+      <WalletArt icons={["robot", "code", "headset"]} className="mx-auto min-h-0 w-full max-w-[22rem] flex-1" />
       <div className="flex flex-col gap-3">
         <Link href="/connect" className={primaryButton}>
           Comenzar
