@@ -73,3 +73,9 @@ test("a connected agent has no funds access until its card is configured", () =>
   equal(status(), "active");
   throws(() => configureAgentCard(store, id, 1n, 1n, now), LedgerError); // ya tiene tarjeta
 });
+
+test("an alias keeps its letters and only collapses repeated spaces", () => {
+  const store = createStore();
+  const id = connectAgent(store, "codex", "Codex  ·   Escritorio de Sosa", now);
+  equal(store.agents.find((agent) => agent.id === id)!.name, "Codex · Escritorio de Sosa");
+});

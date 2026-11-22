@@ -143,7 +143,7 @@ export type AgentClient = keyof typeof agentClients;
 /** Vincula un agente nuevo: queda con acceso de lectura y sin tarjeta, o sea sin acceso a fondos. */
 export function connectAgent(store: Store, client: string, alias: string, now: Date) {
   if (!Object.hasOwn(agentClients, client)) throw new LedgerError("Elige un cliente: Claude Code o Codex.");
-  const name = alias.trim().replace(/s+/g, " ");
+  const name = alias.trim().replace(/\s+/g, " ");
   if (name.length < 2 || name.length > 30) throw new LedgerError("El alias debe tener entre 2 y 30 caracteres.");
   if (store.agents.some((agent) => agent.name.toLowerCase() === name.toLowerCase())) throw new LedgerError("Ya tienes un agente con ese alias.");
   const id = nextId(store, "agt");
