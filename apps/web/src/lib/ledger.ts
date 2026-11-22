@@ -17,6 +17,10 @@ export type Agent = {
   name: string;
   role: string;
   icon: "agent" | "bars" | "laptop";
+  /** Logo de su cliente en la tarjeta: Claude, ChatGPT/Codex o la marca de Tilcai. */
+  brand: "claude" | "chatgpt" | "tilcai";
+  /** Acabado de su tarjeta, siempre con la paleta de Tilcai. */
+  theme: "accent" | "ivory" | "ink";
   paused: boolean;
   linkedCard: boolean;
   /** Código de su tarjeta; `null` mientras no tenga una activada. */
@@ -64,9 +68,9 @@ export function createStore(now = new Date("2026-11-21T20:00:00.000Z")): Store {
     ],
     agents: [
       // Los montos de Codex se leen del estado de su tarjeta (ver `agentsView`); aquí solo son el valor inicial.
-      { id: codexAgentId, name: "Codex · Portátil", role: "Compra informes de mercado", icon: "agent", paused: false, linkedCard: true, card: "AG-7K2Q", limit: usdc(0, 50).toString(), spent: "0", maxPerPurchase: usdc(0, 50).toString() },
-      { id: "agt_seo", name: "Agente SEO", role: "Compra datos de palabras clave", icon: "agent", paused: true, linkedCard: false, card: "SEO-T482", limit: usdc(50).toString(), spent: usdc(12).toString(), maxPerPurchase: usdc(5).toString() },
-      { id: "agt_analytics", name: "Agente Analítica", role: "APIs, dashboards y reportes", icon: "bars", paused: false, linkedCard: false, card: "AN-114C", limit: usdc(50).toString(), spent: usdc(50).toString(), maxPerPurchase: usdc(10).toString() },
+      { id: codexAgentId, name: "Codex · Portátil", role: "Compra informes de mercado", icon: "agent", brand: "chatgpt", theme: "accent", paused: false, linkedCard: true, card: "AG-7K2Q", limit: usdc(0, 50).toString(), spent: "0", maxPerPurchase: usdc(0, 50).toString() },
+      { id: "agt_seo", name: "Agente SEO", role: "Compra datos de palabras clave", icon: "agent", brand: "tilcai", theme: "ivory", paused: true, linkedCard: false, card: "SEO-T482", limit: usdc(50).toString(), spent: usdc(12).toString(), maxPerPurchase: usdc(5).toString() },
+      { id: "agt_analytics", name: "Agente Analítica", role: "APIs, dashboards y reportes", icon: "bars", brand: "tilcai", theme: "ink", paused: false, linkedCard: false, card: "AN-114C", limit: usdc(50).toString(), spent: usdc(50).toString(), maxPerPurchase: usdc(10).toString() },
     ],
     sessions: [
       { id: "ses_codex", agentId: codexAgentId, title: "Informe de mercado", state: "active", startedAt: at },
@@ -147,7 +151,7 @@ export function connectAgent(store: Store, client: string, alias: string, now: D
   if (!Object.hasOwn(agentClients, client)) throw new LedgerError("Elige un cliente: Claude Code o Codex.");
   const name = cleanAlias(store, alias);
   const id = nextId(store, "agt");
-  store.agents.push({ id, name, role: agentClients[client as AgentClient].role, icon: "laptop", paused: false, linkedCard: false, card: null, limit: "0", spent: "0", maxPerPurchase: "0" });
+  store.agents.push({ id, name, role: agentClients[client as AgentClient].role, icon: "laptop", brand: client === "claude" ? "claude" : "chatgpt", theme: (["accent", "ink", "ivory"] as const)[store.agents.length % 3]!, paused: false, linkedCard: false, card: null, limit: "0", spent: "0", maxPerPurchase: "0" });
   store.notices.unshift({ id: nextId(store, "ntf"), title: "Agente conectado", body: `${name} quedó vinculado. Configura su tarjeta y límites para que pueda comprar.`, at: now.toISOString(), read: false });
   return id;
 }
