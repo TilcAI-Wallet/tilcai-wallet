@@ -5,8 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./fixtures": "./src/fixtures.ts",
-    "./purchase-provisional": "./src/purchase-provisional.ts"
+    "./fixtures": "./src/fixtures.ts"
   },
   "scripts": {
     "openapi": "tsx src/openapi.ts",

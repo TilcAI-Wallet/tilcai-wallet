@@ -7,7 +7,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/app.test.ts"
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
     "@tilcai-wallet/api-contracts": "workspace:*",

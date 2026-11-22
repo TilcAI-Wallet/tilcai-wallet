@@ -1,21 +1,16 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { provisionalCreateOrderSchema, provisionalReceiptSchema } from "./purchase-provisional.js";
+import { formatUsdcMinor } from "./purchase-provisional.js";
+import { createOrderSchema } from "./wallet-v1.js";
 
-const id = "ac7d78cc-31bb-4c2e-86e3-337250ef43c1";
-test("amount is a positive, bounded atomic integer string", () => {
-  assert.equal(provisionalCreateOrderSchema.safeParse({ cardId: id, amountAtomic: "5000000" }).success, true);
-  for (const value of [0, "0", "0.50", "invalid", "9223372036854775808"]) {
-    assert.equal(provisionalCreateOrderSchema.safeParse({ cardId: id, amountAtomic: value }).success, false);
-  }
-  assert.equal(provisionalCreateOrderSchema.safeParse({ cardId: id, amountAtomic: "1", tenantId: id }).success, false);
+test("formats USDC atomic units exactly", () => {
+  assert.equal(formatUsdcMinor("5000000"), "0.5000000");
+  assert.equal(formatUsdcMinor("195000000"), "19.5000000");
+  assert.throws(() => formatUsdcMinor("0.5"));
 });
-test("receipt amount representations must agree and synthetic evidence is rejected", () => {
-  const receipt = { receiptId: id, orderId: id, network: "testnet", contract: "contract", asset: "asset",
-    recipient: "recipient", amountAtomic: "5000000", amountFormatted: "0.5000000", evidence: "stellar_testnet",
-    transactionHash: "a".repeat(64), ledger: 1, paymentStatus: "confirmed", deliveryStatus: "pending", refundStatus: "none" };
-  assert.equal(provisionalReceiptSchema.safeParse(receipt).success, true);
-  assert.equal(provisionalReceiptSchema.safeParse({ ...receipt, amountFormatted: "0.6000000" }).success, false);
-  assert.equal(provisionalReceiptSchema.safeParse({ ...receipt, amountAtomic: "bad" }).success, false);
-  assert.equal(provisionalReceiptSchema.safeParse({ ...receipt, evidence: "synthetic" }).success, false);
+test("the official order contract rejects untrusted tenant and recipient fields", () => {
+  const order = { cardId: "card-1", offerId: "test-report", maxAmountMinor: "5000000" };
+  assert.equal(createOrderSchema.safeParse(order).success, true);
+  assert.equal(createOrderSchema.safeParse({ ...order, tenantId: "other" }).success, false);
+  assert.equal(createOrderSchema.safeParse({ ...order, recipient: "other" }).success, false);
 });
