@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getPrefs, prefsCookie, requireSession, sessionCookie, type Method, type Prefs } from "@/lib/auth";
 import { randomBytes } from "node:crypto";
 import { approvePairing, configureAgentCard, createPairing, findPairing, fund, LedgerError, rejectPairing, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
+import { handleMcp } from "@/lib/mcp";
 import { parseUsdc } from "@/lib/money";
 import { demoAddress, isStellarAddress } from "@/lib/stellar";
 import { parseUsername } from "@/lib/username";
@@ -81,6 +82,26 @@ export async function approvePairingAction(code: string): Promise<Result> {
 
 export async function rejectPairingAction(code: string): Promise<Result> {
   return guard(() => rejectPairing(store(), code));
+}
+
+const rpc = (id: number, method: string, params: unknown) => ({ jsonrpc: "2.0", id, method, params });
+
+/** Hace de cliente MCP: llama al servidor con el código, igual que lo haría Claude o ChatGPT, sin salir de la app. */
+export async function simulateConnectionAction(code: string): Promise<Result> {
+  await requireSession();
+  const reply = handleMcp(store(), code, rpc(1, "initialize", { protocolVersion: "2025-06-18", clientInfo: { name: "simulador-mcp", version: "1" } }), new Date());
+  return reply.status === 200 ? { ok: true } : { ok: false, error: "El código venció. Vuelve atrás para generar uno nuevo." };
+}
+
+/** El agente conectado pide una compra de prueba de 0,50 USDC por el mismo camino MCP que usaría de verdad. */
+export async function simulatePurchaseAction(agentId: string): Promise<Result> {
+  await requireSession();
+  const pairing = store().pairings.find((p) => p.agentId === agentId);
+  if (!pairing) return { ok: false, error: "Este agente no se conectó por MCP." };
+  const reply = handleMcp(store(), pairing.code, rpc(2, "tools/call", { name: "request_purchase", arguments: { amount: "0.50", description: "Compra de prueba (MCP simulado)" } }), new Date());
+  const result = (reply.body as { result?: { isError?: boolean; content: { text: string }[] } } | undefined)?.result;
+  refresh();
+  return result?.isError ? { ok: false, error: result.content[0]?.text ?? "Compra rechazada." } : { ok: true };
 }
 
 export async function configureAgentCardAction(agentId: string, limitText: string, maxText: string): Promise<Result> {
