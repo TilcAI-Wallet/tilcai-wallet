@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "check": "tsx src/worker.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
     "zod": "catalog:"
