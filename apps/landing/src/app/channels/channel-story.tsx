@@ -8,7 +8,7 @@ export function ChannelStory() {
     <ScrollStory
       id="canales"
       title="La misma wallet, varios canales"
-      note="Escenas simuladas · Stellar Testnet"
+      note="Recorrido de canales · Stellar Testnet"
       className={styles.section}
       slides={channels.map((scene) => ({ label: scene.name, content: <ChannelScene scene={scene} /> }))}
     />

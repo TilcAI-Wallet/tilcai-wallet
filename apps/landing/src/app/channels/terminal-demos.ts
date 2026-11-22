@@ -1,7 +1,7 @@
 import { demoPurchase as purchase } from "../story/demo-purchase";
 import type { TerminalDemo } from "./channel-types";
 
-const status = "MCP local · Ejemplo de conexión";
+const status = "Recorrido MCP · stdio local";
 
 export const agentDemos = [
   {
@@ -27,7 +27,7 @@ export const agentDemos = [
     detail: "Con la sesión autorizada, el agente crea la orden y consulta su estado por MCP.",
     lines: [
       { tone: "prompt", text: "Compra el informe si entra en el límite." },
-      { tone: "tool", text: "get_card → tope 5,00 USDC" },
+      { tone: "tool", text: `get_card → tope ${purchase.limit}` },
       { tone: "tool", text: "create_order → test-report" },
       { tone: "result", text: `get_order → pago confirmado · ${purchase.payment}` },
     ],
@@ -42,7 +42,7 @@ export const agentDemos = [
     lines: [
       { tone: "prompt", text: "Consulta el recibo de la última compra." },
       { tone: "tool", text: "get_order → recibo disponible" },
-      { tone: "tool", text: "get_receipt → permiso, orden, pago y entrega" },
+      { tone: "tool", text: "get_receipt → permiso, orden y pago" },
       { tone: "result", text: `${purchase.order} · ${purchase.payment}` },
     ],
   },
@@ -58,6 +58,6 @@ export const cliDemo = {
   lines: [
     { tone: "prompt", text: "pnpm --filter @tilcai-wallet/cli start health" },
     { tone: "tool", text: "Consultando el gateway local…" },
-    { tone: "result", text: "Gateway alcanzable · escena de ejemplo" },
+    { tone: "result", text: "Gateway local · respuesta OK" },
   ],
 } as const satisfies TerminalDemo;
