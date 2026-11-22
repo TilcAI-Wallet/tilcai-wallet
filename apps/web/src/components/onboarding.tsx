@@ -19,47 +19,32 @@ const methods: { id: string; icon: IconName; title: string; detail: string; badg
 ];
 
 export function ConnectOptions({ returning }: { returning: boolean }) {
-  const router = useRouter();
-  const [selected, setSelected] = useState("passkey");
-  const next = selected === "passkey" ? (returning ? "/passkey?mode=login" : "/passkey") : `/connect/${selected}`;
-
   return (
     <>
-      <div role="radiogroup" aria-label="Método de acceso" className="flex flex-col gap-2.5">
-        {methods.map((method) => {
-          const on = method.id === selected;
-          return (
-            <button
-              key={method.id}
-              type="button"
-              role="radio"
-              aria-checked={on}
-              onClick={() => setSelected(method.id)}
-              className={`flex min-h-16 items-center gap-3 rounded-full border px-3 text-left ${on ? "border-accent bg-accent/10" : "border-ivory/60"}`}
-            >
-              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink">
-                <Icon name={method.icon} size={26} />
+      <nav aria-label="Método de acceso" className="flex flex-col gap-2.5">
+        {methods.map((method) => (
+          <Link
+            key={method.id}
+            href={method.id === "passkey" ? (returning ? "/passkey?mode=login" : "/passkey") : `/connect/${method.id}`}
+            className="flex min-h-16 items-center gap-3 rounded-full border border-ivory/60 px-3 text-left active:border-accent active:bg-accent/10"
+          >
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink">
+              <Icon name={method.icon} size={26} />
+            </span>
+            <span className="h-8 w-px bg-ivory/40" />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="flex items-center justify-between gap-2">
+                <span className="text-lg">{method.title}</span>
+                {method.badge && <span className="rounded-full bg-mint px-2.5 py-0.5 text-sm text-ink">{method.badge}</span>}
               </span>
-              <span className="h-8 w-px bg-ivory/40" />
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="flex items-center justify-between gap-2">
-                  <span className="text-lg">{method.title}</span>
-                  {method.badge && <span className="rounded-full bg-mint px-2.5 py-0.5 text-sm text-ink">{method.badge}</span>}
-                </span>
-                <span className="text-sm text-ivory/80">{method.detail}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex flex-col gap-3">
-        <button type="button" onClick={() => router.push(next)} className={primaryButton}>
-          Continuar
-        </button>
-        <Link href="/" className={secondaryButton}>
-          Volver
-        </Link>
-      </div>
+              <span className="text-sm text-ivory/80">{method.detail}</span>
+            </span>
+          </Link>
+        ))}
+      </nav>
+      <Link href="/" className={secondaryButton}>
+        Volver
+      </Link>
     </>
   );
 }
