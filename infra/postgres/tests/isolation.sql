@@ -47,7 +47,7 @@ DO $$ BEGIN
                              AND r.policyname='api_credential_scope' AND r.permissive='RESTRICTIVE' AND r.roles='{wallet_api}')) THEN
     RAISE EXCEPTION 'tenant table without credential-bound API policy';
   END IF;
-END $;
+END $$;
 -- Temporary INSERT grant isolates the RLS write test from privilege-denial tests.
 GRANT INSERT ON wallet_private.sessions TO wallet_api;
 INSERT INTO wallet_private.tenants (tenant_id) VALUES ('test-tenant-a'), ('test-tenant-b');
@@ -82,7 +82,7 @@ END $$;
 SET LOCAL ROLE wallet_api;
 -- Spoofing the GUC without a verified credential exposes nothing, including through lock_card.
 SELECT set_config('wallet.tenant_id', 'test-tenant-a', true);
-DO $ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM wallet_private.sessions) OR EXISTS (SELECT 1 FROM wallet_private.cards) OR
      EXISTS (SELECT 1 FROM wallet_private.lock_card('testnet','card-a','test-session-a')) THEN
     RAISE EXCEPTION 'spoofed tenant context without credential leaked rows';
@@ -94,8 +94,8 @@ DO $ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
   PERFORM set_config('wallet.tenant_id', '', true);
-END $;
-DO $ BEGIN
+END $$;
+DO $$ BEGIN
   IF (SELECT count(*) FROM wallet_private.verify_credential(decode(repeat('01',32),'hex'))) <> 1 THEN
     RAISE EXCEPTION 'valid credential rejected';
   END IF;
@@ -112,7 +112,7 @@ DO $$ BEGIN
 END $$;
 -- Bound to tenant A: switching the GUC to B or verifying a B credential cannot reach B.
 SELECT set_config('wallet.tenant_id', 'test-tenant-b', true);
-DO $ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM wallet_private.sessions) OR EXISTS (SELECT 1 FROM wallet_private.cards) OR
      EXISTS (SELECT 1 FROM wallet_private.lock_card('testnet','card-b','test-session-b')) THEN
     RAISE EXCEPTION 'GUC switch reached another tenant';
@@ -124,9 +124,9 @@ DO $ BEGIN
     IF SQLERRM <> 'transaction already bound to another tenant' THEN RAISE; END IF;
   END;
   IF wallet_private.api_tenant() IS DISTINCT FROM 'test-tenant-a' THEN RAISE EXCEPTION 'binding changed'; END IF;
-END $;
+END $$;
 SELECT set_config('wallet.tenant_id', 'test-tenant-a', true);
-DO $ BEGIN
+DO $$ BEGIN
   IF (SELECT count(*) FROM wallet_private.lock_card('testnet','card-a','test-session-a')) <> 1 THEN
     RAISE EXCEPTION 'bound credential cannot lock its own card';
   END IF;
