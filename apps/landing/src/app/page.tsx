@@ -1,12 +1,11 @@
 import { projectName } from "@tilcai-wallet/config";
 import { LandingHeader, LandingHero } from "./landing-hero";
 import { Walkthrough } from "./walkthrough/walkthrough";
+import { ChannelStory } from "./channels/channel-story";
 
 // shortcut: points to the GitHub org until the team has a pilot form or contact email.
 const pilotUrl = "https://github.com/TilcAI-Wallet";
 const repoUrl = "https://github.com/TilcAI-Wallet/tilcai-wallet";
-
-const channels = ["Web", "App móvil", "Extensión de navegador", "MCP para agentes", "Telegram", "WhatsApp", "Terminal"];
 
 export default function Landing() {
   return (
@@ -16,19 +15,7 @@ export default function Landing() {
         <LandingHero />
         <Walkthrough />
 
-        <section id="canales" className="mx-auto max-w-6xl px-6 py-24 md:px-10">
-          <h2 className="text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Donde ya trabajas</h2>
-          <p className="mt-5 max-w-xl leading-relaxed text-muted">
-            La misma wallet y los mismos recibos, sin importar desde dónde se use.
-          </p>
-          <ul className="mt-10 flex flex-wrap gap-3">
-            {channels.map((channel) => (
-              <li key={channel} className="rounded-full border border-line bg-paper px-5 py-2.5 font-medium">
-                {channel}
-              </li>
-            ))}
-          </ul>
-        </section>
+        <ChannelStory />
 
         <section id="piloto" className="on-violet mx-auto mb-24 max-w-6xl px-6 md:px-10">
           <div className="bg-violet-deep px-8 py-14 text-paper md:px-14 md:py-20">

@@ -12,6 +12,8 @@ Los grabados de Claude Code, Codex, OpenCode y Grok Bot vienen de la sección St
 
 `#como-funciona` recorre tarjeta, límite, compra y recibo con una escena de celular. El panel fijo avanza con el scroll del navegador. Con movimiento reducido, en pantallas bajas y sin JavaScript se leen los cuatro pasos en orden. Ambos ejemplos de la landing comparten los importes de `src/app/story/demo-purchase.ts`.
 
+`#canales` reproduce nueve escenas ilustrativas con el mismo mecanismo de scroll. Los pasos MCP reflejan las herramientas locales del [servidor MCP](../mcp/README.md). Las escenas de mensajería y los clientes en desarrollo muestran datos de ejemplo y el estado de cada integración. Los símbolos de WhatsApp y Telegram proceden de [Simple Icons](https://github.com/simple-icons/simple-icons).
+
 - [ ] Reemplazar el enlace del piloto por un formulario o correo del equipo.
 - [ ] Añadir capturas o video de la demo cuando el flujo en testnet esté listo.
 - [ ] Elegir dominio y hosting.
