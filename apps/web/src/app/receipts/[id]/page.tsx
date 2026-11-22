@@ -8,6 +8,7 @@ import { formatUsdc } from "@/lib/money";
 import { WalletNotFoundError, wallet } from "@/lib/wallet";
 
 const payment = {
+  not_submitted: ["wait", "Pago no enviado"],
   pending: ["wait", "Pago pendiente"],
   confirmed: ["ok", "Pago confirmado"],
   failed: ["bad", "Pago fallido"],
@@ -50,8 +51,14 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
         </div>
         {receipt.payment.txHash ? (
           <>
-            <p className="break-all text-sm text-muted">{receipt.payment.txHash}</p>
-            <p className="text-sm text-muted">Ledger {receipt.payment.ledger}</p>
+            <p className="break-all text-sm text-muted">
+              {receipt.simulated ? "Hash (simulado) " : ""}
+              {receipt.payment.txHash}
+            </p>
+            <p className="text-sm text-muted">
+              {receipt.simulated ? "Ledger (simulado) " : "Ledger "}
+              {receipt.payment.ledger}
+            </p>
             {receipt.payment.explorerUrl && (
               <a
                 href={receipt.payment.explorerUrl}
@@ -65,7 +72,11 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
           </>
         ) : (
           <p className="text-sm text-muted">
-            {receipt.payment.state === "pending" ? "Esperando confirmación de Stellar." : "No se registró ninguna transacción."}
+            {receipt.payment.state === "pending"
+              ? "Esperando confirmación de Stellar."
+              : receipt.payment.state === "not_submitted"
+                ? "El pago aún no se envió a Stellar."
+                : "No se registró ninguna transacción."}
           </p>
         )}
       </section>

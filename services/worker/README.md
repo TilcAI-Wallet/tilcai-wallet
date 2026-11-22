@@ -1,5 +1,72 @@
-# Worker
+# Worker de prueba
 
-`pnpm --filter @tilcai-wallet/worker check` valida la configuración local. Próximos pasos: cursor de Stellar RPC, conciliación por hash, evidencia autenticada, outbox y monitoreo de TTL. Probar reinicios, entrega tardía y resultados RPC inciertos.
+`pnpm --filter @tilcai-wallet/worker check` valida la configuración y sale. El
+proceso está deshabilitado por defecto; `WORKER_MODE=fixture` y una conexión privada
+`WORKER_DATABASE_URL` permiten ejecutar `pnpm --filter @tilcai-wallet/worker start`.
+El login de conexión debe tener el rol `wallet_worker` y un administrador debe
+asignarlo a los tenants permitidos en `wallet_private.worker_assignments`. No se
+acepta un tenant por variables de entorno ni se concede lectura directa de la cola.
+El Session pooler debe conservar `session_user`; conexiones remotas requieren TLS
+con `sslmode=verify-full`.
 
-El worker usará Supabase Postgres y un rol dedicado. Reclama trabajo mediante un lease, aplica el contexto del tenant al operar sobre su orden y conserva `NOT_FOUND` como incierto hasta obtener evidencia del ledger. [Persistencia y recuperación](../../docs/persistence.md)
+El worker de fixture guarda su carga sintética en PostgreSQL, deduplica su envío
+simulado, recupera tras caducidad del lease y confirma el recibo como `mode: fixture`.
+No llama a Stellar, no firma, no usa `PaymentPort` ni constituye evidencia de red.
+La entrega queda pendiente. La implementación real necesita almacenamiento privado
+resoluble de sobres, firmante autorizado, comprobación de política y saldo RPC,
+conciliación por hash y el proveedor de prueba. No se habilita Testnet real.
+
+`RECONCILE_INTERVAL_MS` (250–60000) y `WORKER_LEASE_SECONDS` (1–300) acotan el
+sondeo y la duración del lease. No se deben registrar URLs, credenciales ni sobres.
+
+## Preflight Testnet aislado
+
+`prepareTestnetDryRun` consulta política y saldo mediante RPC inyectado, exige la
+passphrase Testnet, el agente como source y fee payer, USDC y destinatario fijados,
+y simula `spend(5000000)`. Solo acepta autorización Soroban por source account;
+autorizaciones de dirección/delegadas y restauración se rechazan. El firmante
+inyectado firma el hash sin exportar su clave. El resultado es un sobre firmado:
+trátalo como sensible y no lo imprimas. No se realiza difusión.
+
+`prepareAndPersistTestnet` cifra el sobre con AES-256-GCM y lo guarda en PostgreSQL
+junto al intento bajo el lease vigente. La clave de 32 bytes se inyecta desde un
+almacén externo; no está en la base ni se configura automáticamente. Al recuperar,
+`loadTestnetEnvelope` valida AEAD, metadatos, hash de red y digest de todos los bytes
+XDR. `verifyTestnetTransfer` consulta el hash por RPC, conserva `NOT_FOUND` y timeout
+como inciertos y solo acepta un evento SEP-41 que coincida con el sobre exacto.
+
+`broadcastAuthorizedTestnet` (`testnet-broadcast.ts`) está conectada al worker, pero
+deshabilitada por defecto. Solo envía los mismos bytes almacenados de la orden activada y
+con una autorización humana guardada para su hash, tras verificar sobre, red, límites de
+validez, secuencia del agente y estado v2 del contrato. Con WalletFoundation v2 el destinatario y
+la revisión de política forman parte de la operación firmada: un `set_policy` posterior hace
+fallar la ejecución en lugar de desviar el pago. Las pruebas usan un RPC falso y no acceden a una red.
+
+## Modo Testnet ejecutable (difusión deshabilitada por defecto)
+
+Solo se firma WalletFoundation v2: `version() == 2`, `policy_state()` con la revisión
+revisada de la tarjeta (`cards.policy_revision`) y `spend(amount, recipient, expected_policy_revision)`.
+Los sobres v1 se informan como `legacy_envelope` y no se regeneran. El sobre vale unos 10 minutos
+(120 ledgers / 600 s). La difusión está deshabilitada salvo con `TESTNET_BROADCAST=single-authorized`,
+`TESTNET_BROADCAST_ORDER_ID` y una autorización almacenada para el hash exacto
+([runbook](../../docs/testnet-runbook.md)). Ver
+[preflight](../../docs/testnet-preflight.md#destinatario-y-revisión-de-política-walletfoundation-v2).
+
+`WORKER_MODE=testnet` requiere `STELLAR_RPC_URL` HTTPS, `ENVELOPE_KEY_ID` y
+`ENVELOPE_KEY_FILE` (32 bytes en base64, permisos 0600). `AGENT_SIGNER_SECRET_FILE`
+es opcional: sin él solo se concilian sobres ya preparados. `TESTNET_BROADCAST` solo
+acepta `disabled`. Cada iteración reclama con lease, prepara una única vez, recupera
+el mismo sobre cifrado tras reinicios, consulta el hash (solo lectura) y confirma
+mediante `confirm_testnet_payment` únicamente con un evento SEP-41 verificado.
+Timeout, `NOT_FOUND` o eventos no coincidentes conservan intento y retención. Cada
+llamada RPC tiene un plazo `RPC_TIMEOUT_MS` (1000–30000, 10000 por defecto): un RPC
+bloqueado se trata como timeout y no detiene el worker. Un sobre cuyo `maxLedger` ya pasó
+sigue pendiente con su retención; no se crea otro intento ni se libera sin prueba. Tras la
+confirmación, `demo-report-provider` entrega un artefacto cuyo digest y vínculo con
+la orden y el pago se verifican de forma independiente antes de registrarlo.
+
+`testnet-controlled.ts` conecta preflight/vault, lease y `uncertain` exclusivamente
+con `SimulatedTransport`, que no tiene capacidad de red. Las observaciones de ese
+transporte no se guardan como evidencia Testnet. El verificador SEP-41 comprueba
+el sobre exacto y el evento de transferencia, suponiendo un RPC confiable; aún no
+se ha conectado a una transición de pago confirmado ni al proveedor de entrega.

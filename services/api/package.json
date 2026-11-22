@@ -7,11 +7,15 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/app.test.ts"
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
     "@tilcai-wallet/api-contracts": "workspace:*",
     "fastify": "catalog:",
+    "pg": "8.16.3",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.6"
   }
 }

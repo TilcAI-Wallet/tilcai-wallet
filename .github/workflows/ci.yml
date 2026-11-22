@@ -12,6 +12,20 @@ jobs:
   workspace:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: wallet_test
+          POSTGRES_PASSWORD: wallet_test_only
+          POSTGRES_DB: wallet_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U wallet_test -d wallet_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       EXPO_NO_TELEMETRY: "1"
@@ -23,6 +37,22 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Test initial PostgreSQL migration and RLS
+        run: bash infra/postgres/test-db.sh
+        env:
+          WALLET_TEST_DATABASE_URL: postgresql://wallet_test:wallet_test_only@127.0.0.1:5432/wallet_test
+      - name: Test purchase API against PostgreSQL
+        run: node --import tsx --test services/api/src/purchase-db.test.ts
+        env:
+          WALLET_TEST_DATABASE_URL: postgresql://wallet_test:wallet_test_only@127.0.0.1:5432/wallet_test
+      - name: Test encrypted envelope recovery against PostgreSQL
+        run: node --import tsx --test services/worker/src/vault-db.test.ts
+        env:
+          WALLET_TEST_DATABASE_URL: postgresql://wallet_test:wallet_test_only@127.0.0.1:5432/wallet_test
+      - name: Test Testnet reconciliation, delivery and receipt reads against PostgreSQL
+        run: node --import tsx --test services/api/src/testnet-db.test.ts
+        env:
+          WALLET_TEST_DATABASE_URL: postgresql://wallet_test:wallet_test_only@127.0.0.1:5432/wallet_test
       - run: pnpm check
 
   soroban:

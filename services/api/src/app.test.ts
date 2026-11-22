@@ -10,9 +10,9 @@ test("reports gateway health", async (context) => {
   deepEqual(response.json(), { status: "ok", service: "wallet-api" });
 });
 
-test("the foundation exposes no order mutation", async (context) => {
+test("purchase requires authentication", async (context) => {
   const api = createApi();
   context.after(() => api.close());
   const response = await api.inject({ method: "POST", url: "/v1/orders" });
-  equal(response.statusCode, 404);
+  equal(response.statusCode, 401);
 });

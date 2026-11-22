@@ -36,9 +36,11 @@ export type Receipt = {
   network: "testnet" | "mainnet";
   asset: "USDC";
   cardId: string;
-  createdAt: string;
+  /** La API v1 no expone la fecha del recibo; los datos simulados sí. */
+  createdAt: string | null;
   payment: {
-    state: "pending" | "confirmed" | "failed";
+    /** not_submitted: el pago aún no se envió a Stellar (difusión deshabilitada). */
+    state: "not_submitted" | "pending" | "confirmed" | "failed";
     txHash: string | null;
     ledger: number | null;
     explorerUrl: string | null;

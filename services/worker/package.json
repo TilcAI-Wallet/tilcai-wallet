@@ -4,10 +4,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "tsx src/worker.ts",
-    "typecheck": "tsc --noEmit"
+    "check": "tsx src/worker.ts --check",
+    "start": "tsx src/worker.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
-    "zod": "catalog:"
+    "pg": "8.16.3",
+    "zod": "catalog:",
+    "@stellar/stellar-sdk": "17.4.0"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.6"
   }
 }
