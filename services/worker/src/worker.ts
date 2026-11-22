@@ -41,7 +41,7 @@ if (process.argv.includes("--check") || config.WORKER_MODE === "disabled") {
       const provider = new DemoReportProvider();
       console.log(`Testnet worker started without broadcast. ${broadcastBlocker}`);
       iterate = async () => {
-        const payment = await processTestnetPaymentOnce({ pool, rpc: server, signer, keyId: config.ENVELOPE_KEY_ID!, keyForId, leaseSeconds: config.WORKER_LEASE_SECONDS });
+        const payment = await processTestnetPaymentOnce({ pool, rpc: server, signer, keyId: config.ENVELOPE_KEY_ID!, keyForId, leaseSeconds: config.WORKER_LEASE_SECONDS, rpcTimeoutMs: config.RPC_TIMEOUT_MS });
         if (payment !== "idle") console.log(`Testnet payment step: ${payment}`);
         const delivery = await processDemoDeliveryOnce({ pool, provider, leaseSeconds: config.WORKER_LEASE_SECONDS });
         if (delivery !== "idle") console.log(`Demo delivery step: ${delivery}`);

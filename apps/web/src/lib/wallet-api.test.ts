@@ -29,7 +29,10 @@ test("fixture receipts stay simulated and unsubmitted payments never show a hash
   equal(fixture.payment.explorerUrl, null);
   equal(fixture.state, "paid");
   const pending = receiptFromApi({ ...testnetReceipt, payment: { status: "not_submitted" }, delivery: { status: "pending" } });
-  deepEqual([pending.state, pending.payment.state, pending.payment.txHash], ["payment_pending", "pending", null]);
+  deepEqual([pending.state, pending.payment.state, pending.payment.txHash], ["payment_pending", "not_submitted", null]);
+  const submitted = receiptFromApi({ ...testnetReceipt, payment: { status: "pending", txHash: "c".repeat(64) }, delivery: { status: "pending" } });
+  deepEqual([submitted.state, submitted.payment.state, submitted.payment.explorerUrl], ["payment_pending", "pending", null]);
+  throws(() => receiptFromApi({ ...testnetReceipt, mode: "fixture", sourceAddress: null }), /inválido/);
   throws(() => receiptFromApi({ ...testnetReceipt, payment: { status: "confirmed" } }));
   throws(() => receiptFromApi({ ...testnetReceipt, delivery: { status: "delivered", providerId: "demo-report-provider" } }));
   throws(() => receiptFromApi({ ...testnetReceipt, mode: "mainnet" }));

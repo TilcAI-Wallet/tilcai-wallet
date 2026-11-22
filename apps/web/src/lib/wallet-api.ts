@@ -35,6 +35,8 @@ export function receiptFromApi(input: unknown): Receipt {
   if (delivered && (typeof delivery.providerId !== "string" || typeof delivery.evidenceId !== "string" || typeof delivery.digest !== "string" || !hex64.test(delivery.digest))) throw new Error("Recibo inválido");
   if (!["pending", "delivered", "failed"].includes(delivery.status as string)) throw new Error("Recibo inválido");
   const simulated = receipt.mode === "fixture";
+  // Un fixture nunca tiene evidencia de entrega real.
+  if (simulated && delivered) throw new Error("Recibo inválido");
   const state: OrderState = payment.status === "failed" ? "failed" : delivered ? "delivered" : confirmed ? "paid" : "payment_pending";
   return {
     id: receipt.receiptId,
@@ -47,7 +49,7 @@ export function receiptFromApi(input: unknown): Receipt {
     cardId: receipt.cardId,
     createdAt: null,
     payment: {
-      state: confirmed ? "confirmed" : payment.status === "failed" ? "failed" : "pending",
+      state: confirmed ? "confirmed" : payment.status === "failed" ? "failed" : payment.status === "not_submitted" ? "not_submitted" : "pending",
       txHash: confirmed ? (payment.txHash as string) : null,
       ledger: confirmed ? (payment.ledger as number) : null,
       // Un hash de fixture no existe en Stellar: no se enlaza al explorador.

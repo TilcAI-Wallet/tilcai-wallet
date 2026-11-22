@@ -46,6 +46,14 @@ cifrado, passphrase Testnet, activo, contrato origen, destinatario, importe y le
 dentro de los límites; un hash solo puede liquidar una orden. Es idempotente ante
 repetición idéntica con el mismo token. `record_demo_delivery` solo actúa con
 evidencia de pago persistida. Una política RESTRICTIVE impide que la API encole
-eventos distintos de `payment`. Limitación conocida: el rol de API puede fijar
-`wallet.tenant_id` con SQL arbitrario; la frontera de confianza sigue siendo el código
-de la API, que solo usa el tenant devuelto por `verify_credential`.
+eventos distintos de `payment`.
+
+La migración 008 cierra la suplantación de `wallet.tenant_id` por el rol de API:
+`verify_credential` vincula la transacción (backend y xid) al tenant y la sesión de una
+credencial y sesión vigentes en `api_context`, sin acceso directo de los roles de ejecución.
+Una política RESTRICTIVE `api_credential_scope` exige ese tenant en cada tabla con
+`tenant_scope` y `lock_card` exige la sesión vinculada. Cambiar el GUC no da acceso a
+otro tenant y una segunda credencial de otro tenant en la misma transacción se rechaza.
+Riesgo residual: quien tenga el login de API y un token válido de un tenant actúa como ese
+tenant; dentro del tenant, RLS no separa sesiones salvo en `lock_card`. El worker
+asignado sigue siendo de confianza para verificar el RPC antes de `confirm_testnet_payment`.

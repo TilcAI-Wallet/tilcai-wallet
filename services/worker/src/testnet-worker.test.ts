@@ -44,6 +44,15 @@ test("SIMULATED: NOT_FOUND, timeout and unverified events keep the attempt and n
   }
 });
 
+test("SIMULATED: a stalled RPC hits the deadline and keeps the attempt uncertain", async () => {
+  const stalled = setup({ outcome: "verified", attemptState: "uncertain" });
+  const rpc = { ...stalled.rpc, getNetwork: stalled.rpc.getNetwork.bind(stalled.rpc), getTransaction: () => new Promise<never>(() => undefined) };
+  const started = Date.now();
+  assert.equal(await processTestnetPaymentOnce({ ...stalled.run, rpc: rpc as typeof stalled.rpc, rpcTimeoutMs: 50 }), "awaiting_evidence");
+  assert.ok(Date.now() - started < 5_000);
+  assert.equal(confirms(stalled.calls), 0);
+});
+
 test("SIMULATED: verified transfer passes the exact stored evidence to the fenced confirmation", async () => {
   const state = setup({ outcome: "verified" });
   assert.equal(await processTestnetPaymentOnce(state.run), "confirmed");

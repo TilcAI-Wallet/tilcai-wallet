@@ -37,7 +37,17 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='wallet_private' AND tablename='outbox' AND policyname='api_payment_events_only' AND permissive='RESTRICTIVE') THEN
     RAISE EXCEPTION 'API outbox restriction missing';
   END IF;
-END $$;
+  -- The API tenant must come from a credential verified in the same transaction.
+  IF has_table_privilege('wallet_api','wallet_private.api_context','SELECT,INSERT,UPDATE,DELETE') OR
+     has_table_privilege('wallet_worker','wallet_private.api_context','SELECT,INSERT,UPDATE,DELETE') THEN
+    RAISE EXCEPTION 'runtime role can forge API context';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_policies t WHERE t.schemaname='wallet_private' AND t.policyname='tenant_scope'
+             AND NOT EXISTS (SELECT 1 FROM pg_policies r WHERE r.schemaname=t.schemaname AND r.tablename=t.tablename
+                             AND r.policyname='api_credential_scope' AND r.permissive='RESTRICTIVE' AND r.roles='{wallet_api}')) THEN
+    RAISE EXCEPTION 'tenant table without credential-bound API policy';
+  END IF;
+END $;
 -- Temporary INSERT grant isolates the RLS write test from privilege-denial tests.
 GRANT INSERT ON wallet_private.sessions TO wallet_api;
 INSERT INTO wallet_private.tenants (tenant_id) VALUES ('test-tenant-a'), ('test-tenant-b');
@@ -46,9 +56,11 @@ VALUES ('test-tenant-a', 'testnet', 'test-session-a', 'actor-a', now() + interva
        ('test-tenant-b', 'testnet', 'test-session-b', 'actor-b', now() + interval '1 hour');
 INSERT INTO wallet_private.credentials (tenant_id,network,session_id,token_hash,scopes,expires_at)
 VALUES ('test-tenant-a','testnet','test-session-a',decode(repeat('01',32),'hex'),ARRAY['orders:read'],now() + interval '1 hour'),
-       ('test-tenant-b','testnet','test-session-b',decode(repeat('02',32),'hex'),ARRAY['cards:read'],now() - interval '1 hour');
+       ('test-tenant-b','testnet','test-session-b',decode(repeat('02',32),'hex'),ARRAY['cards:read'],now() - interval '1 hour'),
+       ('test-tenant-b','testnet','test-session-b',decode(repeat('04',32),'hex'),ARRAY['cards:read'],now() + interval '1 hour');
 INSERT INTO wallet_private.cards (tenant_id, network, card_id, session_id, contract_id, asset_id, recipient, agent)
-VALUES ('test-tenant-a','testnet','card-a','test-session-a','contract-a','asset-a','recipient-a','agent-a');
+VALUES ('test-tenant-a','testnet','card-a','test-session-a','contract-a','asset-a','recipient-a','agent-a'),
+       ('test-tenant-b','testnet','card-b','test-session-b','contract-b','asset-b','recipient-b','agent-b');
 INSERT INTO wallet_private.orders (tenant_id, network, order_id, card_id, session_id, offer_id, amount, payment_state, delivery_state, refund_state)
 VALUES ('test-tenant-a','testnet','order-a','card-a','test-session-a','offer-a',5000000,'pending','pending','none');
 INSERT INTO wallet_private.attempts (tenant_id, network, order_id, attempt_id, state)
@@ -68,7 +80,22 @@ DO $$ BEGIN
   END;
 END $$;
 SET LOCAL ROLE wallet_api;
-DO $$ BEGIN
+-- Spoofing the GUC without a verified credential exposes nothing, including through lock_card.
+SELECT set_config('wallet.tenant_id', 'test-tenant-a', true);
+DO $ BEGIN
+  IF EXISTS (SELECT 1 FROM wallet_private.sessions) OR EXISTS (SELECT 1 FROM wallet_private.cards) OR
+     EXISTS (SELECT 1 FROM wallet_private.lock_card('testnet','card-a','test-session-a')) THEN
+    RAISE EXCEPTION 'spoofed tenant context without credential leaked rows';
+  END IF;
+  BEGIN
+    INSERT INTO wallet_private.sessions (tenant_id, network, session_id, actor_id, expires_at)
+      VALUES ('test-tenant-a', 'testnet', 'spoofed', 'actor-a', now() + interval '1 hour');
+    RAISE EXCEPTION 'spoofed tenant write succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  PERFORM set_config('wallet.tenant_id', '', true);
+END $;
+DO $ BEGIN
   IF (SELECT count(*) FROM wallet_private.verify_credential(decode(repeat('01',32),'hex'))) <> 1 THEN
     RAISE EXCEPTION 'valid credential rejected';
   END IF;
@@ -83,8 +110,26 @@ END $$;
 DO $$ BEGIN
   IF (SELECT count(*) FROM wallet_private.sessions) <> 0 THEN RAISE EXCEPTION 'missing tenant context leaked rows'; END IF;
 END $$;
+-- Bound to tenant A: switching the GUC to B or verifying a B credential cannot reach B.
+SELECT set_config('wallet.tenant_id', 'test-tenant-b', true);
+DO $ BEGIN
+  IF EXISTS (SELECT 1 FROM wallet_private.sessions) OR EXISTS (SELECT 1 FROM wallet_private.cards) OR
+     EXISTS (SELECT 1 FROM wallet_private.lock_card('testnet','card-b','test-session-b')) THEN
+    RAISE EXCEPTION 'GUC switch reached another tenant';
+  END IF;
+  BEGIN
+    PERFORM * FROM wallet_private.verify_credential(decode(repeat('04',32),'hex'));
+    RAISE EXCEPTION 'second tenant bound in one transaction';
+  EXCEPTION WHEN raise_exception THEN
+    IF SQLERRM <> 'transaction already bound to another tenant' THEN RAISE; END IF;
+  END;
+  IF wallet_private.api_tenant() IS DISTINCT FROM 'test-tenant-a' THEN RAISE EXCEPTION 'binding changed'; END IF;
+END $;
 SELECT set_config('wallet.tenant_id', 'test-tenant-a', true);
-DO $$ BEGIN
+DO $ BEGIN
+  IF (SELECT count(*) FROM wallet_private.lock_card('testnet','card-a','test-session-a')) <> 1 THEN
+    RAISE EXCEPTION 'bound credential cannot lock its own card';
+  END IF;
   IF (SELECT count(*) FROM wallet_private.sessions) <> 1 OR EXISTS (SELECT 1 FROM wallet_private.sessions WHERE tenant_id = 'test-tenant-b') THEN
     RAISE EXCEPTION 'cross-tenant read';
   END IF;

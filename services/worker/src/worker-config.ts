@@ -6,6 +6,7 @@ const base = z.object({
   WORKER_DATABASE_URL: z.string().min(1).optional(),
   RECONCILE_INTERVAL_MS: z.coerce.number().int().min(250).max(60000).default(5000),
   WORKER_LEASE_SECONDS: z.coerce.number().int().min(1).max(300).default(30),
+  RPC_TIMEOUT_MS: z.coerce.number().int().min(1000).max(30000).default(10000),
   STELLAR_RPC_URL: z.string().optional(),
   ENVELOPE_KEY_ID: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/).optional(),
   ENVELOPE_KEY_FILE: z.string().min(1).optional(),

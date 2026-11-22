@@ -57,7 +57,10 @@ es opcional: sin él solo se concilian sobres ya preparados. `TESTNET_BROADCAST`
 acepta `disabled`. Cada iteración reclama con lease, prepara una única vez, recupera
 el mismo sobre cifrado tras reinicios, consulta el hash (solo lectura) y confirma
 mediante `confirm_testnet_payment` únicamente con un evento SEP-41 verificado.
-Timeout, `NOT_FOUND` o eventos no coincidentes conservan intento y retención. Tras la
+Timeout, `NOT_FOUND` o eventos no coincidentes conservan intento y retención. Cada
+llamada RPC tiene un plazo `RPC_TIMEOUT_MS` (1000–30000, 10000 por defecto): un RPC
+bloqueado se trata como timeout y no detiene el worker. Un sobre cuyo `maxLedger` ya pasó
+sigue pendiente con su retención; no se crea otro intento ni se libera sin prueba. Tras la
 confirmación, `demo-report-provider` entrega un artefacto cuyo digest y vínculo con
 la orden y el pago se verifican de forma independiente antes de registrarlo.
 

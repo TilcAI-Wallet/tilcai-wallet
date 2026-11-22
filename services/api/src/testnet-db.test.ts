@@ -141,6 +141,22 @@ test("PostgreSQL: Testnet orders confirm only with verified evidence, deliver on
     await assert.rejects(() => spoofed.query("INSERT INTO wallet_private.outbox(tenant_id,network,event_id,order_id,kind) VALUES ($1,'testnet',$2,$3,'delivery')", [A, randomUUID(), order.orderId]), /row-level security/);
     await spoofed.query("ROLLBACK"); await spoofed.query("BEGIN");
     await assert.rejects(() => spoofed.query("UPDATE wallet_private.orders SET payment_state='confirmed' WHERE tenant_id=$1", [A]), /permission denied/);
+    // Without a verified credential the GUC alone exposes nothing (before migration 008 it did).
+    await spoofed.query("ROLLBACK"); await spoofed.query("BEGIN");
+    await spoofed.query("SELECT set_config('wallet.tenant_id',$1,true)", [A]);
+    for (const table of ["orders", "cards", "receipts", "attempts", "holds", "outbox", "payment_evidence"])
+      assert.equal((await spoofed.query(`SELECT count(*)::int AS n FROM wallet_private.${table}`)).rows[0].n, 0, table);
+    assert.equal((await spoofed.query("SELECT * FROM wallet_private.lock_card('testnet',$1,$2)", [cardA, sessA])).rowCount, 0);
+    // Bound to tenant B by its credential: switching the GUC to A cannot read, lock or enqueue A's work.
+    await spoofed.query("ROLLBACK"); await spoofed.query("BEGIN");
+    assert.equal((await spoofed.query("SELECT * FROM wallet_private.verify_credential($1)", [sha(tokB)])).rows[0].tenant_id, B);
+    await spoofed.query("SELECT set_config('wallet.tenant_id',$1,true)", [A]);
+    assert.equal((await spoofed.query("SELECT count(*)::int AS n FROM wallet_private.orders")).rows[0].n, 0);
+    assert.equal((await spoofed.query("SELECT * FROM wallet_private.lock_card('testnet',$1,$2)", [cardA, sessA])).rowCount, 0);
+    await assert.rejects(() => spoofed.query("INSERT INTO wallet_private.outbox(tenant_id,network,event_id,order_id,kind) VALUES ($1,'testnet',$2,$3,'payment')", [A, randomUUID(), order.orderId]), /row-level security/);
+    await spoofed.query("ROLLBACK"); await spoofed.query("BEGIN");
+    await spoofed.query("SELECT * FROM wallet_private.verify_credential($1)", [sha(tokB)]);
+    await assert.rejects(() => spoofed.query("SELECT * FROM wallet_private.verify_credential($1)", [sha(tokA)]), /already bound to another tenant/);
   } finally { await spoofed.query("ROLLBACK"); spoofed.release(); }
   assert.equal((await state()).payment_state, "pending");
 

@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import { loadTestnetEnvelope } from "./postgres-envelope-vault.js";
 import type { AgentSigner } from "./testnet-dry-run.js";
 import { prepareAndPersistTestnet } from "./testnet-preflight.js";
+import { withRpcDeadline } from "./rpc-deadline.js";
 import { verifyTestnetTransfer } from "./testnet-transfer.js";
 import { testReportAmount, testReportRecipient, testnetUsdcContract } from "./testnet-constants.js";
 
@@ -17,6 +18,8 @@ export interface TestnetWorkerOptions {
   keyId: string;
   keyForId: (keyId: string) => Promise<Buffer>;
   leaseSeconds: number;
+  /** Per-call RPC deadline; a stalled RPC must not hold the worker forever. Default 10 s. */
+  rpcTimeoutMs?: number;
 }
 export type PaymentStep = "idle" | "lease_lost" | "awaiting_broadcast" | "awaiting_evidence" | "evidence_rejected" | "confirmed";
 
@@ -24,6 +27,7 @@ export type PaymentStep = "idle" | "lease_lost" | "awaiting_broadcast" | "awaiti
  * Timeout, NOT_FOUND or unverified events keep the hold and the attempt; nothing is marked failed. */
 export async function processTestnetPaymentOnce(options: TestnetWorkerOptions): Promise<PaymentStep> {
   const { pool } = options;
+  const readRpc = withRpcDeadline(options.rpc, options.rpcTimeoutMs ?? 10_000);
   const task = (await pool.query("SELECT * FROM wallet_private.claim_testnet($1)", [options.leaseSeconds])).rows[0];
   if (!task) return "idle";
   const lease = { tenantId: task.tenant_id as string, eventId: task.event_id as string, token: task.lease_token as string };
@@ -34,7 +38,7 @@ export async function processTestnetPaymentOnce(options: TestnetWorkerOptions): 
   let attemptState: string = snapshot.attempt_state;
   if (attemptState === "created") {
     if (!options.signer || options.signer.publicKey !== snapshot.agent) throw new Error("no authorized signer for this card");
-    await prepareAndPersistTestnet(pool, options.rpc, options.signer, lease,
+    await prepareAndPersistTestnet(pool, readRpc, options.signer, lease,
       { orderId: task.order_id, attemptId: snapshot.attempt_id, contractId: snapshot.contract_id, keyId: options.keyId }, await options.keyForId(options.keyId));
     attemptState = "prepared";
   }
@@ -42,7 +46,7 @@ export async function processTestnetPaymentOnce(options: TestnetWorkerOptions): 
   const loaded = await loadTestnetEnvelope(pool, lease, snapshot.attempt_id, options.keyForId);
   if (!loaded) return "lease_lost";
   // Broadcast is intentionally absent (see testnet-constants.ts broadcastBlocker).
-  const observed = await verifyTestnetTransfer(options.rpc, loaded.context, loaded.envelope);
+  const observed = await verifyTestnetTransfer(readRpc, loaded.context, loaded.envelope);
   if (observed.status !== "verified") return attemptState === "uncertain" ? "awaiting_evidence" : "awaiting_broadcast";
   const renewed = await pool.query("SELECT wallet_private.renew_fixture($1,$2,$3,$4) AS owned", [lease.tenantId, lease.eventId, lease.token, options.leaseSeconds]);
   if (!renewed.rows[0]?.owned) return "lease_lost";
