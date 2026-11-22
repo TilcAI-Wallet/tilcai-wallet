@@ -6,7 +6,7 @@
 
 **Para quién:** agencias de automatización con IA en La Paz, Bolivia, y freelancers que operan agentes para clientes. **Precio previsto:** primera tarjeta gratis y US$4 al mes por cada tarjeta activa adicional. [Mercado y precio](#mercado-y-precio)
 
-**Estado:** el límite de gasto funciona en Stellar Testnet: un contrato Soroban confirmó un pago de 0,50 USDC y rechaza el siguiente por tope. La PWA y el servidor MCP están publicados con datos simulados. La compra integrada (API, worker y Postgres) está en desarrollo. [Qué funciona hoy](#qué-funciona-hoy) · [Prioridades](docs/roadmap.md) · [Checklist](#checklist-del-equipo)
+**Estado:** el límite de gasto funciona en Stellar Testnet: un contrato Soroban confirmó un pago de 0,50 USDC y rechaza el siguiente por tope. La PWA y el servidor MCP están publicados con datos simulados. La compra integrada (API, worker y Postgres) está en desarrollo. [Qué funciona hoy](#qué-funciona-hoy) · [Prioridades](docs/roadmap.md)
 
 **Almacenamiento elegido:** Supabase Postgres para sesiones, órdenes, intentos y recibos. Supabase Storage privado para los archivos que custodie la wallet. Stellar confirma saldos, gastos y políticas. La integración está pendiente. [Decisión y alcance](docs/adr/003-supabase-persistence.md)
 
@@ -19,7 +19,7 @@
 | Contrato de política Soroban v1 | **Stellar Testnet** | Limita activo, destinatario, monto por pago y gasto acumulado, y permite congelar. Desplegado en [`CDCSGJZC…PLIVLT6`](https://lab.stellar.org/r/testnet/contract/CDCSGJZCHL5SOYURXLZ6YZQGWIOFN3FDREKJ27LGPPPCFJRIPPLIVLT6). Pago y rechazo en [Evidencia en Testnet](#evidencia-en-testnet). |
 | Contrato v2: pago atado a destinatario y revisión de política | **Código y pruebas** | Fusionado en [#15](https://github.com/TilcAI-Wallet/tilcai-wallet/pull/15). Falta desplegar una instancia nueva. |
 | PWA · passkey | **Real en el dispositivo** | WebAuthn del navegador (Windows Hello, Touch ID, huella). El servidor todavía no verifica la firma. |
-| PWA · saldo, tarjeta, actividad, agentes, sesiones, avisos y congelación | **Simulado** | Datos de demostración rotulados como «Datos simulados» en la app. |
+| PWA · saldo, tarjeta, actividad, agentes, sesiones, avisos y congelación | **Simulado** | Datos de demostración guardados por la propia PWA. No consultan la red ni la API. |
 | PWA · recibo | **Mixto** | El hash y el ledger son los del pago real en Testnet. La orden y la entrega son simuladas. |
 | PWA · conexión MCP (`get_wallet_status`, `request_purchase`, `list_receipts`) | **Conexión real, compras simuladas** | Un cliente MCP se conecta de verdad con un código de un solo uso. Las compras no mueven fondos. [Detalle](apps/web/README.md#conectar-un-agente-de-verdad-mcp) |
 | MCP stdio (`get_card`, `create_order`, `get_order`, `get_receipt`) | **Probado con fixtures** | Usa la API v1 y su contrato de esquemas. La API real llega con [#12](https://github.com/TilcAI-Wallet/tilcai-wallet/pull/12). |
@@ -166,100 +166,12 @@ Todos los comandos se ejecutan **desde la raíz** del repo.
 
 ## Cómo contribuir
 
-1. Elige una tarea del checklist y crea una rama desde `main`.
+1. Elige una tarea de las [prioridades](docs/roadmap.md) o de los [issues](https://github.com/TilcAI-Wallet/tilcai-wallet/issues) y crea una rama desde `main`.
 2. Trabaja solo en tu módulo con `pnpm --filter @tilcai-wallet/<módulo> …`.
 3. Ejecuta `pnpm check` antes de subir.
 4. Abre un PR. CI corre el workspace y los contratos.
 
 ¿Cambias un endpoint? Primero `api-contracts`, luego la API, luego el SDK y al final el cliente. Guía completa en [CONTRIBUTING](CONTRIBUTING.md).
-
----
-
-## Checklist del equipo
-
-El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega. Acordar primero el entorno y los esquemas, iniciar contratos e identidad en paralelo y preparar web móvil y MCP con datos de prueba.
-
-<details open>
-<summary><b>0. Base de desarrollo</b> · 3/4</summary>
-
-- [x] Crear workspace pnpm con dependencias fijadas y un único lockfile JavaScript.
-- [x] Preparar apps, adaptadores, API, worker, paquetes, Rust, comandos por módulo y CI.
-- [x] Agregar pruebas de humo de salud y MCP, y un test del contrato base.
-- [ ] Definir entornos, credenciales de testnet, activos y responsables mediante PR.
-
-</details>
-
-<details>
-<summary><b>1. Autoridad, API y persistencia</b> · 0/7</summary>
-
-- [ ] Modelar usuarios, tenants, sesiones lógicas, credenciales, tarjetas, políticas y recuperaciones.
-- [ ] Implementar alta, respaldo, WebAuthn, scopes, cierre y rotación.
-- [ ] Implementar intención de vínculo y fondeo con enlace de uso único.
-- [ ] Preparar Supabase Postgres para local y Testnet con migraciones, roles mínimos y RLS en tablas de tenant.
-- [ ] Persistir órdenes, intentos, idempotencia, retenciones, outbox e inbox. Probar la contención de API y worker.
-- [ ] Versionar OpenAPI y esquemas, autorizar por objeto y proyectar el estado confirmado.
-- [ ] Aislar el firmante delegado y medir despliegue y restauración de subcuentas.
-
-</details>
-
-<details>
-<summary><b>2. Compra directa y recibo</b> · 1/7</summary>
-
-- [ ] Confirmar la cuenta de contrato, factory, activo de prueba y proveedor.
-- [x] Limitar activo, destinatario, monto por pago y gasto acumulado en Soroban. Verificar en Testnet un pago permitido y el rechazo por tope.
-- [ ] Agregar vigencia a la política y desplegar una instancia v2 del contrato en Testnet.
-- [ ] Implementar cotización, simulación de registro, firma aislada, simulación de verificación final, envío y conciliación por hash.
-- [ ] Conservar el pedido ante resultado incierto, cotización vencida o rechazo de presupuesto.
-- [ ] Registrar evidencia autenticada de entrega y emitir un recibo con ID estable.
-- [ ] Reconciliar eventos, cursor, entrega tardía, duplicados y costo. Probar reinicios antes y después del envío.
-
-</details>
-
-<details>
-<summary><b>3. Primera integración · web móvil y MCP stdio</b> · 0/5</summary>
-
-- [ ] Mostrar saldo distinguido del disponible, centro de sesiones, tarjetas y extracto.
-- [ ] Implementar herramientas para consultar presupuesto, pedir una compra, solicitar aumento y buscar recibo.
-- [ ] Aprobar el aumento con passkey y retomar la misma orden tras confirmar y revalidar.
-- [ ] Congelar, reactivar, revocar y devolver remanente con estados de confirmación.
-- [ ] Reproducir los dos pagos y los rechazos del [guion de demo](docs/demo.md).
-
-</details>
-
-<details>
-<summary><b>4. Canales adicionales · P1 y P2</b> · 0/6</summary>
-
-- [ ] **Móvil.** Confirmar compilaciones iOS/Android, enlaces verificados, passkeys y notificaciones.
-- [ ] **Extensión.** Revisar permisos por origen, mensajes, expiración, revocación y Chrome/Edge.
-- [ ] **MCP remoto.** Integrar Streamable HTTP y validar autenticación, scopes y cada cliente.
-- [ ] **Telegram.** Validar bot y Mini App, vínculo, avisos y retorno al panel seguro.
-- [ ] **CLI/TUI.** Añadir alta autorizada, estado de sesión, consultas y recibos.
-- [ ] **WhatsApp (P2).** Verificar compatibilidad del caso con Meta, plantillas y webhooks.
-
-</details>
-
-<details>
-<summary><b>5. Pruebas operativas y piloto</b> · 0/5</summary>
-
-- [ ] Probar aislamiento de tenants, dos tarjetas independientes y rotación sin reiniciar gasto.
-- [ ] Probar límites, revocación, resultados ambiguos, protección contra duplicados y retorno de fondos.
-- [ ] Evaluar x402 y MPP con la smart account y capacidades de fondeo mediante rutas validadas.
-- [ ] Medir costo, tiempo de conciliación, disponibilidad y disposición a pagar con agencias y freelancers.
-- [ ] Registrar demo, hashes, resultados y estado por canal. Probar restauración, custodia y operación antes de usar fondos reales.
-
-</details>
-
-<details>
-<summary><b>I+D. Autorización poscuántica en Stellar Testnet</b> · investigación en curso</summary>
-
-- [x] Documentar el alcance de CAP-87 y confirmar Protocolo 30 en Testnet.
-- [ ] Probar SDK y CLI compatibles y una autorización ML-DSA-44 en una subcuenta aislada.
-- [ ] Registrar pago de 0,50, rechazos de contrato y comparación con autorización clásica en Soroban.
-- [ ] Conciliar la evidencia y mostrar el alcance en el recibo experimental.
-
-[Tarea delegable](docs/research/post-quantum.md#tarea-delegable)
-
-</details>
 
 ---
 

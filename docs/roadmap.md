@@ -20,4 +20,4 @@ La base incluye el workspace, los esqueletos de los canales, CI y pruebas de hum
 
 Asignar **contratos y backend en paralelo** y abrir **web móvil y MCP** sobre los esquemas y datos de prueba. Móvil nativo, extensión y Telegram también pueden preparar navegación, permisos y vínculo. Cada canal aporta su prueba de conexión, permisos, revocación y retorno al mismo recibo antes de habilitar las acciones correspondientes.
 
-[README y checklist](../README.md#checklist-del-equipo) · [Arquitectura](architecture.md) · [Demo](demo.md) · [Investigación poscuántica](research/post-quantum.md)
+[README](../README.md) · [Arquitectura](architecture.md) · [Demo](demo.md) · [Investigación poscuántica](research/post-quantum.md)
