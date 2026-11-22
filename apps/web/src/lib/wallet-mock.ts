@@ -36,7 +36,8 @@ export type Receipt = {
   network: "testnet" | "mainnet";
   asset: "USDC";
   cardId: string;
-  createdAt: string;
+  /** La API v1 no expone la fecha del recibo; los datos simulados sí. */
+  createdAt: string | null;
   payment: {
     state: "pending" | "confirmed" | "failed";
     txHash: string | null;

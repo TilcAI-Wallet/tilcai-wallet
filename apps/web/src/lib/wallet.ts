@@ -1,5 +1,6 @@
 import { available, createStore, payAgent, type Agent, type AgentSession, type Notice, type Store } from "./ledger.ts";
 import { demoCardId, demoReceiptIds, demoReceipts, type Card, type Receipt, type Session } from "./wallet-mock.ts";
+import { fetchReceipt, WalletApiError } from "./wallet-api.ts";
 
 export class WalletNotFoundError extends Error {}
 
@@ -37,6 +38,14 @@ export const wallet = {
     };
   },
   async receipt(id: string): Promise<Receipt> {
+    // Con WALLET_API_URL y WALLET_API_TOKEN (solo servidor) el recibo viene de la Wallet API real.
+    const apiUrl = process.env.WALLET_API_URL, apiToken = process.env.WALLET_API_TOKEN;
+    if (apiUrl && apiToken) {
+      return fetchReceipt(apiUrl, apiToken, id).catch((error: unknown) => {
+        if (error instanceof WalletApiError && (error.status === 404 || error.status === 400)) throw new WalletNotFoundError();
+        throw error;
+      });
+    }
     if (id === demoReceiptIds.error) throw new Error("API de prueba caída");
     if (!Object.hasOwn(demoReceipts, id)) throw new WalletNotFoundError();
     return demoReceipts[id]!;

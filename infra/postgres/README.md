@@ -37,4 +37,15 @@ servicio siguen formando parte de la frontera de confianza. La API aún no habil
 
 La migración 006 añade lectura del intento y transición a `uncertain` para un login
 worker asignado que posea un lease vigente. La operación conserva la retención y no
-confirma pagos. La confirmación financiera y la entrega real aún no están conectadas.
+confirma pagos.
+
+La migración 007 añade `payment_evidence` y `delivery_evidence` (RLS forzada, solo
+lectura para la API, sin acceso directo del worker). `confirm_testnet_payment` exige
+login asignado, lease vigente, tarjeta `testnet`, hash del intento, digest del sobre
+cifrado, passphrase Testnet, activo, contrato origen, destinatario, importe y ledger
+dentro de los límites; un hash solo puede liquidar una orden. Es idempotente ante
+repetición idéntica con el mismo token. `record_demo_delivery` solo actúa con
+evidencia de pago persistida. Una política RESTRICTIVE impide que la API encole
+eventos distintos de `payment`. Limitación conocida: el rol de API puede fijar
+`wallet.tenant_id` con SQL arbitrario; la frontera de confianza sigue siendo el código
+de la API, que solo usa el tenant devuelto por `verify_credential`.

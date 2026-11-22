@@ -49,6 +49,10 @@ jobs:
         run: node --import tsx --test services/worker/src/vault-db.test.ts
         env:
           WALLET_TEST_DATABASE_URL: postgresql://wallet_test:wallet_test_only@127.0.0.1:5432/wallet_test
+      - name: Test Testnet reconciliation, delivery and receipt reads against PostgreSQL
+        run: node --import tsx --test services/api/src/testnet-db.test.ts
+        env:
+          WALLET_TEST_DATABASE_URL: postgresql://wallet_test:wallet_test_only@127.0.0.1:5432/wallet_test
       - run: pnpm check
 
   soroban:

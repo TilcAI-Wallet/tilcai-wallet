@@ -12,6 +12,31 @@ DO $$ BEGIN
              WHERE n.nspname = 'wallet_private' AND r.rolname IN ('wallet_api', 'wallet_worker')) THEN
     RAISE EXCEPTION 'runtime role owns a table';
   END IF;
+  -- Evidence is written only by fenced SECURITY DEFINER transitions, never by runtime DML.
+  IF has_table_privilege('wallet_api','wallet_private.payment_evidence','INSERT,UPDATE,DELETE') OR
+     has_table_privilege('wallet_api','wallet_private.delivery_evidence','INSERT,UPDATE,DELETE') OR
+     has_table_privilege('wallet_worker','wallet_private.payment_evidence','SELECT,INSERT,UPDATE,DELETE') OR
+     has_table_privilege('wallet_worker','wallet_private.delivery_evidence','SELECT,INSERT,UPDATE,DELETE') OR
+     has_table_privilege('wallet_api','wallet_private.orders','UPDATE') OR
+     has_table_privilege('wallet_api','wallet_private.attempts','UPDATE') OR
+     has_table_privilege('wallet_api','wallet_private.cards','UPDATE') THEN
+    RAISE EXCEPTION 'runtime role can alter financial evidence or state directly';
+  END IF;
+  IF has_function_privilege('wallet_api','wallet_private.confirm_testnet_payment(text,text,text,text,text,text,bigint,integer,text,text,text,numeric,bytea)','EXECUTE') OR
+     has_function_privilege('wallet_api','wallet_private.record_demo_delivery(text,text,text,text,text,text,integer,text)','EXECUTE') OR
+     has_function_privilege('wallet_api','wallet_private.claim_testnet(integer)','EXECUTE') THEN
+    RAISE EXCEPTION 'API role can execute worker transitions';
+  END IF;
+  -- Every SECURITY DEFINER function pins search_path and is not executable by PUBLIC.
+  IF EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+             WHERE n.nspname='wallet_private' AND p.prosecdef
+               AND (p.proconfig IS NULL OR NOT EXISTS (SELECT 1 FROM unnest(p.proconfig) c WHERE c LIKE 'search_path=%')
+                    OR p.proacl IS NULL OR EXISTS (SELECT 1 FROM aclexplode(p.proacl) a WHERE a.grantee = 0))) THEN
+    RAISE EXCEPTION 'unsafe SECURITY DEFINER function';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='wallet_private' AND tablename='outbox' AND policyname='api_payment_events_only' AND permissive='RESTRICTIVE') THEN
+    RAISE EXCEPTION 'API outbox restriction missing';
+  END IF;
 END $$;
 -- Temporary INSERT grant isolates the RLS write test from privilege-denial tests.
 GRANT INSERT ON wallet_private.sessions TO wallet_api;

@@ -49,6 +49,18 @@ con `set_policy` antes de la inclusión: `spend(amount)` no fija el destinatario
 la operación firmada. Este riesgo sigue abierto y debe resolverse antes de activar
 transmisiones. Las pruebas pasan un transporte falso y no acceden a una red.
 
+## Modo Testnet ejecutable (difusión bloqueada)
+
+`WORKER_MODE=testnet` requiere `STELLAR_RPC_URL` HTTPS, `ENVELOPE_KEY_ID` y
+`ENVELOPE_KEY_FILE` (32 bytes en base64, permisos 0600). `AGENT_SIGNER_SECRET_FILE`
+es opcional: sin él solo se concilian sobres ya preparados. `TESTNET_BROADCAST` solo
+acepta `disabled`. Cada iteración reclama con lease, prepara una única vez, recupera
+el mismo sobre cifrado tras reinicios, consulta el hash (solo lectura) y confirma
+mediante `confirm_testnet_payment` únicamente con un evento SEP-41 verificado.
+Timeout, `NOT_FOUND` o eventos no coincidentes conservan intento y retención. Tras la
+confirmación, `demo-report-provider` entrega un artefacto cuyo digest y vínculo con
+la orden y el pago se verifican de forma independiente antes de registrarlo.
+
 `testnet-controlled.ts` conecta preflight/vault, lease y `uncertain` exclusivamente
 con `SimulatedTransport`, que no tiene capacidad de red. Las observaciones de ese
 transporte no se guardan como evidencia Testnet. El verificador SEP-41 comprueba
