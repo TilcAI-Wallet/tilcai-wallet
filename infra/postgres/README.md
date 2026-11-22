@@ -66,3 +66,6 @@ La migración 010 añade `broadcast_authorizations`: un administrador (`authoriz
 concesión a roles de ejecución) autoriza el hash exacto del sobre v2 de una orden de 0,50 USDC con caducidad
 máxima de 24 h y 1–5 reenvíos. El worker solo la consume con `begin_testnet_broadcast` bajo lease vigente,
 que persiste `uncertain` antes del envío. Ningún rol de ejecución puede leerla ni modificarla.
+
+Despliegue en un servicio privado (Supabase: compatibilidad, logins, pooler de sesión, TLS `verify-full` y alta de la
+prueba): ver [runbook Testnet, secciones 2 y 3](../../docs/testnet-runbook.md#2-postgresql-privado-supabase).
