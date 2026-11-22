@@ -43,13 +43,18 @@ no ejecutar contra fondos ni configurar un piloto con estas piezas. Ver
 
 La biblioteca `testnet-broadcast.ts` puede invocar un RPC inyectado solo con gate
 explícito y recuperación cifrada, lease y verificación de política. **No está
-conectada al proceso ejecutable ni autorizada para uso real**. Una comprobación de
-política antes de enviar no elimina el riesgo de que el dueño cambie `recipient`
-con `set_policy` antes de la inclusión: `spend(amount)` no fija el destinatario en
-la operación firmada. Este riesgo sigue abierto y debe resolverse antes de activar
-transmisiones. Las pruebas pasan un transporte falso y no acceden a una red.
+conectada al proceso ejecutable ni autorizada para uso real**. Con WalletFoundation v2 el
+destinatario y la revisión de política forman parte de la operación firmada, por lo que un
+`set_policy` posterior hace fallar la ejecución en lugar de desviar el pago (el riesgo v1 de
+`spend(amount)` queda mitigado). Activar transmisiones sigue requiriendo revisión y autorización
+expresa. Las pruebas pasan un transporte falso y no acceden a una red.
 
 ## Modo Testnet ejecutable (difusión bloqueada)
+
+Solo se firma WalletFoundation v2: `version() == 2`, `policy_state()` con la revisión
+revisada de la tarjeta (`cards.policy_revision`) y `spend(amount, recipient, expected_policy_revision)`.
+Los sobres v1 se informan como `legacy_envelope` y no se regeneran. Ver
+[preflight](../../docs/testnet-preflight.md#destinatario-y-revisión-de-política-walletfoundation-v2).
 
 `WORKER_MODE=testnet` requiere `STELLAR_RPC_URL` HTTPS, `ENVELOPE_KEY_ID` y
 `ENVELOPE_KEY_FILE` (32 bytes en base64, permisos 0600). `AGENT_SIGNER_SECRET_FILE`

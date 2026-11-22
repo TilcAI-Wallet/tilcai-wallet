@@ -59,11 +59,14 @@ test("PostgreSQL: Testnet orders confirm only with verified evidence, deliver on
   await admin.query("INSERT INTO wallet_private.tenants(tenant_id) VALUES($1),($2)", [A, B]);
   await admin.query("INSERT INTO wallet_private.sessions(tenant_id,network,session_id,actor_id,expires_at) VALUES ($1,'testnet',$2,'actor',now()+interval '1 hour'),($1,'testnet',$3,'actor',now()+interval '1 hour'),($4,'testnet',$5,'actor',now()+interval '1 hour')", [A, sessA, sessF, B, sessB]);
   await admin.query("INSERT INTO wallet_private.credentials(tenant_id,network,session_id,token_hash,scopes,expires_at) VALUES ($1,'testnet',$2,$3,$9,now()+interval '1 hour'),($1,'testnet',$4,$5,$9,now()+interval '1 hour'),($6,'testnet',$7,$8,$9,now()+interval '1 hour')", [A, sessA, sha(tokA), sessF, sha(tokF), B, sessB, sha(tokB), scopes]);
-  const insertCard = (tenant: string, card: string, session: string, mode: string, contract: string, agent: string) =>
-    admin.query("INSERT INTO wallet_private.cards(tenant_id,network,card_id,session_id,contract_id,asset_id,recipient,agent,balance_minor,payment_limit_minor,total_limit_minor,spent_minor,mode) VALUES ($1,'testnet',$2,$3,$4,$5,$6,$7,200000000,5000000,5000000,0,$8)", [tenant, card, session, contract, usdc, recipient, agent, mode]);
+  // Testnet cards carry the WalletFoundation v2 policy revision an administrator reviewed.
+  const insertCard = (tenant: string, card: string, session: string, mode: string, contract: string, agent: string, revision: string | null = mode === "testnet" ? "0" : null) =>
+    admin.query("INSERT INTO wallet_private.cards(tenant_id,network,card_id,session_id,contract_id,asset_id,recipient,agent,balance_minor,payment_limit_minor,total_limit_minor,spent_minor,mode,policy_revision) VALUES ($1,'testnet',$2,$3,$4,$5,$6,$7,200000000,5000000,5000000,0,$8,$9)", [tenant, card, session, contract, usdc, recipient, agent, mode, revision]);
   await insertCard(A, cardA, sessA, "testnet", sample.contractId, sample.agent);
   await insertCard(A, cardF, sessF, "fixture", "fixture-contract", "fixture-agent");
   await insertCard(B, cardB, sessB, "testnet", sample.contractId, sample.agent);
+  const cardUnreviewed = `cu-${s}`;
+  await insertCard(A, cardUnreviewed, sessA, "testnet", sample.contractId, sample.agent, null);
 
   const auth = (token: string, idempotencyKey?: string) => ({ authorization: `Bearer ${token}`, ...(idempotencyKey ? { "idempotency-key": idempotencyKey } : {}) });
   const purchase = { offerId: "test-report", maxAmountMinor: "5000000" };
@@ -79,6 +82,9 @@ test("PostgreSQL: Testnet orders confirm only with verified evidence, deliver on
   const card = (await app.inject({ method: "GET", url: `/v1/cards/${cardA}`, headers: auth(tokA) })).json();
   assert.deepEqual([card.mode, card.accountAddress, card.availableMinor, card.spentMinor], ["testnet", sample.contractId, "0", "0"]);
   const fixtureOrder = (await buy(tokF, cardF, "fx-1")).json();
+  // A Testnet card without a reviewed v2 policy revision takes no order and no hold.
+  assert.equal((await buy(tokA, cardUnreviewed, "tn-unreviewed")).statusCode, 503);
+  assert.equal((await admin.query("SELECT count(*)::int AS n FROM wallet_private.orders WHERE tenant_id=$1 AND card_id=$2", [A, cardUnreviewed])).rows[0].n, 0);
   assert.equal(fixtureOrder.mode, "fixture");
 
   // Tenant isolation and client-supplied tenants.
@@ -101,7 +107,7 @@ test("PostgreSQL: Testnet orders confirm only with verified evidence, deliver on
   const claimed = (await worker.query("SELECT * FROM wallet_private.claim_testnet(30)")).rows[0];
   assert.equal(claimed.order_id, order.orderId);
   const attempt = (await admin.query("SELECT attempt_id FROM wallet_private.attempts WHERE tenant_id=$1 AND order_id=$2", [A, order.orderId])).rows[0].attempt_id as string;
-  const contextFor = (tenantId: string, orderId: string, attemptId: string) => ({ keyId, tenantId, orderId, attemptId, contractId: sample.contractId, agent: sample.agent, transactionHash: sample.hash, validThroughLedger: 123 });
+  const contextFor = (tenantId: string, orderId: string, attemptId: string) => ({ keyId, tenantId, orderId, attemptId, contractId: sample.contractId, agent: sample.agent, transactionHash: sample.hash, validThroughLedger: 123, policyRevision: sample.policyRevision });
   assert.equal(await storeTestnetEnvelope(worker, { tenantId: A, eventId: claimed.event_id, token: claimed.lease_token }, contextFor(A, order.orderId, attempt), key, sample.bytes), true);
   await expire();
   await worker.end(); worker = new pg.Pool({ connectionString: url, options: "-c role=wallet_worker", max: 4 });

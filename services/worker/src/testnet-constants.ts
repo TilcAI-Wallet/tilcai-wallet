@@ -3,7 +3,8 @@ export const testnetUsdcContract = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3
 export const testReportRecipient = "GAGK4SEOVSZDQXSBMO6KMUHNH36B3E2AZFDINVDFVRVV2ZYLP577OSHX";
 export const testReportAmount = 5_000_000n;
 
-/** Real broadcast stays blocked until the Soroban contract binds the recipient to the signed call. */
+/** WalletFoundation v2 binds recipient and policy revision to the signed spend. Real broadcast still
+ * requires a reviewed activation, dedicated infrastructure and explicit human authorization. */
 export const broadcastBlocker =
-  "P0 open: WalletFoundation.spend(amount) does not bind the recipient in the signed invocation; " +
-  "the owner can change it with set_policy before inclusion. Real Testnet broadcast is disabled.";
+  "Broadcast gate closed: real Testnet broadcast requires a reviewed activation and explicit authorization. " +
+  "Only WalletFoundation v2 spend(amount, recipient, expected_policy_revision) envelopes are prepared.";

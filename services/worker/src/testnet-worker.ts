@@ -5,6 +5,7 @@ import { loadTestnetEnvelope } from "./postgres-envelope-vault.js";
 import type { AgentSigner } from "./testnet-dry-run.js";
 import { prepareAndPersistTestnet } from "./testnet-preflight.js";
 import { withRpcDeadline } from "./rpc-deadline.js";
+import { LegacyEnvelopeError } from "./spend-interface.js";
 import { verifyTestnetTransfer } from "./testnet-transfer.js";
 import { testReportAmount, testReportRecipient, testnetUsdcContract } from "./testnet-constants.js";
 
@@ -21,10 +22,11 @@ export interface TestnetWorkerOptions {
   /** Per-call RPC deadline; a stalled RPC must not hold the worker forever. Default 10 s. */
   rpcTimeoutMs?: number;
 }
-export type PaymentStep = "idle" | "lease_lost" | "awaiting_broadcast" | "awaiting_evidence" | "evidence_rejected" | "confirmed";
+export type PaymentStep = "idle" | "lease_lost" | "awaiting_broadcast" | "awaiting_evidence" | "evidence_rejected" | "confirmed" | "legacy_envelope";
 
 /** Claim one Testnet payment, recover or create its single signed envelope and reconcile by hash.
- * Timeout, NOT_FOUND or unverified events keep the hold and the attempt; nothing is marked failed. */
+ * Timeout, NOT_FOUND or unverified events keep the hold and the attempt; nothing is marked failed.
+ * An envelope signed for WalletFoundation v1 is reported as legacy_envelope and never re-signed. */
 export async function processTestnetPaymentOnce(options: TestnetWorkerOptions): Promise<PaymentStep> {
   const { pool } = options;
   const readRpc = withRpcDeadline(options.rpc, options.rpcTimeoutMs ?? 10_000);
@@ -38,12 +40,16 @@ export async function processTestnetPaymentOnce(options: TestnetWorkerOptions): 
   let attemptState: string = snapshot.attempt_state;
   if (attemptState === "created") {
     if (!options.signer || options.signer.publicKey !== snapshot.agent) throw new Error("no authorized signer for this card");
+    if (snapshot.policy_revision === null || snapshot.policy_revision === undefined) throw new Error("card has no reviewed WalletFoundation policy revision");
     await prepareAndPersistTestnet(pool, readRpc, options.signer, lease,
-      { orderId: task.order_id, attemptId: snapshot.attempt_id, contractId: snapshot.contract_id, keyId: options.keyId }, await options.keyForId(options.keyId));
+      { orderId: task.order_id, attemptId: snapshot.attempt_id, contractId: snapshot.contract_id, keyId: options.keyId, policyRevision: BigInt(snapshot.policy_revision) },
+      await options.keyForId(options.keyId));
     attemptState = "prepared";
   }
   // Every restart resolves the same encrypted bytes and hash; nothing is signed again.
-  const loaded = await loadTestnetEnvelope(pool, lease, snapshot.attempt_id, options.keyForId);
+  let loaded: Awaited<ReturnType<typeof loadTestnetEnvelope>>;
+  try { loaded = await loadTestnetEnvelope(pool, lease, snapshot.attempt_id, options.keyForId); }
+  catch (error) { if (error instanceof LegacyEnvelopeError) return "legacy_envelope"; throw error; }
   if (!loaded) return "lease_lost";
   // Broadcast is intentionally absent (see testnet-constants.ts broadcastBlocker).
   const observed = await verifyTestnetTransfer(readRpc, loaded.context, loaded.envelope);

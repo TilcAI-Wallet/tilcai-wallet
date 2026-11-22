@@ -6,6 +6,7 @@ import { Networks, rpc, type rpc as Rpc } from "@stellar/stellar-sdk";
 import { processControlledTestnetOnce, SimulatedTransport } from "./testnet-controlled.js";
 import { makeTestEnvelope } from "./test-envelope.fixture.js";
 import { loadTestnetEnvelope, storeTestnetEnvelope } from "./postgres-envelope-vault.js";
+import { LegacyEnvelopeError } from "./spend-interface.js";
 
 const databaseUrl=process.env.WALLET_TEST_DATABASE_URL;
 test("PostgreSQL persists a single encrypted Testnet envelope and enforces lease fencing",{skip:!databaseUrl},async (t) => {
@@ -23,11 +24,16 @@ test("PostgreSQL persists a single encrypted Testnet envelope and enforces lease
   await admin.query("INSERT INTO wallet_private.outbox(tenant_id,network,event_id,order_id,kind) VALUES($1,'testnet',$2,$3,'payment')",[tenant,event,order]);
   await admin.query("INSERT INTO wallet_private.worker_assignments(login_name,tenant_id) SELECT session_user,$1",[tenant]);
   const sample=makeTestEnvelope(), {bytes,hash}=sample, key=randomBytes(32);
-  await admin.query("UPDATE wallet_private.cards SET agent=$2,contract_id=$3 WHERE tenant_id=$1",[tenant,sample.agent,sample.contractId]);
-  const context={keyId:"ephemeral-test-key",agent:sample.agent,tenantId:tenant,orderId:order,attemptId:attempt,contractId:sample.contractId,transactionHash:hash,validThroughLedger:123};
+  await admin.query("UPDATE wallet_private.cards SET agent=$2,contract_id=$3,policy_revision=1 WHERE tenant_id=$1",[tenant,sample.agent,sample.contractId]);
+  const context={keyId:"ephemeral-test-key",agent:sample.agent,tenantId:tenant,orderId:order,attemptId:attempt,contractId:sample.contractId,transactionHash:hash,validThroughLedger:123,policyRevision:sample.policyRevision};
   const claimed=(await worker.query("SELECT * FROM wallet_private.claim_testnet(30)")).rows[0]; assert.ok(claimed);
   const lease={tenantId:tenant,eventId:event,token:claimed.lease_token};
+  // The card was reviewed at revision 1: an envelope signed for revision 0 is not stored.
+  assert.equal(await storeTestnetEnvelope(worker,lease,context,key,bytes),false);
+  await assert.rejects(()=>worker.query("SELECT wallet_private.store_testnet_envelope($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",[tenant,event,claimed.lease_token,attempt,order,sample.contractId,sample.agent,hash,123,"k",randomBytes(12),randomBytes(16),randomBytes(16),randomBytes(32)]),/does not exist/);
+  await admin.query("UPDATE wallet_private.cards SET policy_revision=0 WHERE tenant_id=$1",[tenant]);
   assert.equal(await storeTestnetEnvelope(worker,lease,context,key,bytes),true);
+  assert.deepEqual((await admin.query("SELECT spend_interface,policy_revision::text AS revision FROM wallet_private.encrypted_envelopes WHERE tenant_id=$1",[tenant])).rows[0],{spend_interface:2,revision:"0"});
   assert.equal(await storeTestnetEnvelope(worker,lease,context,key,bytes),false);
   await assert.rejects(()=>api.query("SELECT * FROM wallet_private.encrypted_envelopes"));
   await assert.rejects(()=>worker.query("SELECT * FROM wallet_private.encrypted_envelopes"));
@@ -61,4 +67,9 @@ test("PostgreSQL persists a single encrypted Testnet envelope and enforces lease
   assert.deepEqual(transport.submissions,[createHash("sha256").update(bytes).digest("hex")]);
   const after=await admin.query("SELECT (SELECT count(*) FROM wallet_private.attempts WHERE tenant_id=$1)::int AS attempts,(SELECT count(*) FROM wallet_private.holds WHERE tenant_id=$1 AND released_at IS NULL)::int AS held",[tenant]);
   assert.deepEqual(after.rows[0],{attempts:1,held:1});
+  // An envelope recorded for the v1 interface is refused before decryption and never re-signed.
+  await admin.query("UPDATE wallet_private.encrypted_envelopes SET spend_interface=1,policy_revision=NULL WHERE tenant_id=$1",[tenant]);
+  await admin.query("UPDATE wallet_private.outbox SET lease_until=now()-interval '1 second' WHERE tenant_id=$1",[tenant]);
+  const legacyLease=(await worker.query("SELECT * FROM wallet_private.claim_testnet(30)")).rows[0]; assert.ok(legacyLease);
+  await assert.rejects(()=>loadTestnetEnvelope(worker,{tenantId:tenant,eventId:event,token:legacyLease.lease_token},attempt,async()=>key),(error:unknown)=>error instanceof LegacyEnvelopeError);
 });

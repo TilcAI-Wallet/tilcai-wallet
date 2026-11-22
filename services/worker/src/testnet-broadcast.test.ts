@@ -10,9 +10,9 @@ import { broadcastStoredTestnet } from "./testnet-broadcast.js";
 function setup() {
   const sample=makeTestEnvelope(),key=randomBytes(32),calls:string[]=[];
   const lease={tenantId:"tenant",eventId:"event",token:"token"};
-  const context={keyId:"test",tenantId:lease.tenantId,orderId:"order",attemptId:"attempt",contractId:sample.contractId,agent:sample.agent,transactionHash:sample.hash,validThroughLedger:123};
+  const context={keyId:"test",tenantId:lease.tenantId,orderId:"order",attemptId:"attempt",contractId:sample.contractId,agent:sample.agent,transactionHash:sample.hash,validThroughLedger:123,policyRevision:sample.policyRevision};
   const blob=sealEnvelope(key,context,sample.bytes);
-  const pool={query:async(sql:string)=>{calls.push(sql);if(sql.includes("load_testnet_envelope"))return {rows:[{key_id:context.keyId,nonce:blob.nonce,ciphertext:blob.ciphertext,tag:blob.tag,xdr_digest:blob.xdrDigest,tx_hash:sample.hash,valid_through_ledger:123,order_id:"order",contract_id:sample.contractId,agent:sample.agent}]};if(sql.includes("renew_fixture"))return {rows:[{owned:true}]};if(sql.includes("mark_testnet_uncertain"))return {rows:[{changed:true}]};throw new Error("unexpected query");}} as unknown as Pool;
+  const pool={query:async(sql:string)=>{calls.push(sql);if(sql.includes("load_testnet_envelope"))return {rows:[{key_id:context.keyId,nonce:blob.nonce,ciphertext:blob.ciphertext,tag:blob.tag,xdr_digest:blob.xdrDigest,tx_hash:sample.hash,valid_through_ledger:123,order_id:"order",contract_id:sample.contractId,agent:sample.agent,spend_interface:2,policy_revision:"0"}]};if(sql.includes("renew_fixture"))return {rows:[{owned:true}]};if(sql.includes("mark_testnet_uncertain"))return {rows:[{changed:true}]};throw new Error("unexpected query");}} as unknown as Pool;
   const sent:Buffer[]=[];
   const server={getNetwork:async()=>({passphrase:Networks.TESTNET}),getLatestLedger:async()=>({sequence:110}),sendTransaction:async(tx:{toEnvelope:()=>{toXDR:()=>Uint8Array}})=>{sent.push(Buffer.from(tx.toEnvelope().toXDR()));throw new Error("SIMULATED timeout");}} as unknown as Pick<rpc.Server,"getNetwork"|"getLatestLedger"|"sendTransaction">;
   return {sample,key,calls,sent,options:{pool,rpc:server,lease,attemptId:"attempt",keyForId:async()=>key,verifyFreshPolicy:async()=>true,nowSeconds:()=>Math.floor(Date.now()/1000)}};

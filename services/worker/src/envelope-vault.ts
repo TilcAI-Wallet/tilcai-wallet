@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { Address, Keypair, Networks, Transaction, TransactionBuilder, scValToNative } from "@stellar/stellar-sdk";
+import { Address, Keypair, Networks, Transaction, TransactionBuilder } from "@stellar/stellar-sdk";
+import { assertPolicyRevision, isExpectedSpendCall } from "./spend-interface.js";
 
 /** All fields in this metadata are authenticated by AES-GCM. Never put a key or XDR in logs. */
 export interface EnvelopeContext {
@@ -11,6 +12,8 @@ export interface EnvelopeContext {
   agent: string;
   transactionHash: string;
   validThroughLedger: number;
+  /** WalletFoundation policy revision signed into spend(amount, recipient, expected_policy_revision). */
+  policyRevision: bigint;
 }
 export interface EncryptedEnvelope { nonce: Buffer; ciphertext: Buffer; tag: Buffer; xdrDigest: Buffer }
 
@@ -18,9 +21,14 @@ function associatedData(context: EnvelopeContext): Buffer {
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(context.keyId) || ![context.tenantId,context.orderId,context.attemptId,context.contractId,context.agent].every((x) => typeof x === "string" && x.length > 0 && x.length <= 256) ||
       !/^[0-9a-f]{64}$/.test(context.transactionHash) || !Number.isSafeInteger(context.validThroughLedger) || context.validThroughLedger < 1)
     throw new Error("invalid envelope context");
-  return Buffer.from(JSON.stringify(["tilcai-envelope-v1",Networks.TESTNET,context.keyId,context.tenantId,context.orderId,context.attemptId,context.contractId,context.agent,context.transactionHash,context.validThroughLedger]),"utf8");
+  assertPolicyRevision(context.policyRevision);
+  // v2 binds the signed policy revision; v1 ciphertexts cannot authenticate under this format.
+  return Buffer.from(JSON.stringify(["tilcai-envelope-v2",Networks.TESTNET,context.keyId,context.tenantId,context.orderId,context.attemptId,context.contractId,context.agent,context.transactionHash,context.validThroughLedger,context.policyRevision.toString()]),"utf8");
 }
+/** Accepts only a signed WalletFoundation v2 spend(amount, recipient, expected_policy_revision)
+ * whose operation and Soroban authorization carry exactly the expected three arguments. */
 export function verifySignedSpendEnvelope(envelope: Buffer, context: EnvelopeContext): Buffer {
+  assertPolicyRevision(context.policyRevision);
   if (envelope.length < 1 || envelope.length > 1048576) throw new Error("invalid envelope length");
   let transaction: ReturnType<typeof TransactionBuilder.fromXDR>;
   try { transaction = TransactionBuilder.fromXDR(envelope.toString("base64"), Networks.TESTNET); }
@@ -35,12 +43,12 @@ export function verifySignedSpendEnvelope(envelope: Buffer, context: EnvelopeCon
   const operation=transaction.operations[0]!;
   if (operation.type !== "invokeHostFunction" || operation.source || operation.func.type !== "hostFunctionTypeInvokeContract") throw new Error("unsupported envelope operation");
   const call=operation.func.invokeContract;
-  if (Address.fromScAddress(call.contractAddress).toString() !== context.contractId || call.functionName.toString() !== "spend" || call.args.length !== 1 || scValToNative(call.args[0]!) !== 5_000_000n) throw new Error("unexpected envelope invocation");
+  if (!isExpectedSpendCall(Address.fromScAddress(call.contractAddress).toString(),call.functionName.toString(),call.args,context.contractId,context.policyRevision)) throw new Error("unexpected envelope invocation");
   if (!operation.auth || operation.auth.length !== 1 || operation.auth[0]!.credentials.type !== "sorobanCredentialsSourceAccount") throw new Error("unsupported envelope authorization");
   const invocation=operation.auth[0]!.rootInvocation;
   if (invocation.function.type !== "sorobanAuthorizedFunctionTypeContractFn" || invocation.subInvocations.length !== 0) throw new Error("unsupported envelope authorization tree");
   const authorized=invocation.function.contractFn;
-  if (Address.fromScAddress(authorized.contractAddress).toString() !== context.contractId || authorized.functionName.toString() !== "spend" || authorized.args.length !== 1 || scValToNative(authorized.args[0]!) !== 5_000_000n) throw new Error("unexpected envelope authorization");
+  if (!isExpectedSpendCall(Address.fromScAddress(authorized.contractAddress).toString(),authorized.functionName.toString(),authorized.args,context.contractId,context.policyRevision)) throw new Error("unexpected envelope authorization");
   return createHash("sha256").update(envelope).digest();
 }
 export function sealEnvelope(key: Buffer, context: EnvelopeContext, envelope: Buffer): EncryptedEnvelope {

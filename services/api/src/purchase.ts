@@ -120,8 +120,8 @@ async function getCard(db: PoolClient,id: Identity,cardId: string,lock: boolean)
   const card=result.rows[0]; if (!card) notFound();
   if ((card.mode !== "fixture" && card.mode !== "testnet") || card.asset_id !== stellarTestnetUsdc.contractId || card.recipient !== recipient ||
       [card.balance_minor,card.payment_limit_minor,card.total_limit_minor,card.spent_minor].some((v) => v === null)) unavailable();
-  // A Testnet card must name a real WalletFoundation contract and agent account.
-  if (card.mode === "testnet" && (!contractAddress.test(card.contract_id) || !accountAddress.test(card.agent))) unavailable();
+  // A Testnet card must name a real WalletFoundation v2 contract, agent account and reviewed policy revision.
+  if (card.mode === "testnet" && (!contractAddress.test(card.contract_id) || !accountAddress.test(card.agent) || card.policy_revision === null || card.policy_revision === undefined)) unavailable();
   return card;
 }
 function cardView(card: any, held: bigint) {

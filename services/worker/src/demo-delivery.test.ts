@@ -50,7 +50,7 @@ test("artifact verification binds provider, order, offer, payment hash and ledge
 
 test("worker configuration refuses broadcast and incomplete Testnet settings", () => {
   assert.equal(parseWorkerConfig({}).WORKER_MODE, "disabled");
-  assert.throws(() => parseWorkerConfig({ TESTNET_BROADCAST: "enabled" }), /P0 open/);
+  assert.throws(() => parseWorkerConfig({ TESTNET_BROADCAST: "enabled" }), /Broadcast gate closed/);
   assert.throws(() => parseWorkerConfig({ WORKER_MODE: "testnet" }), /HTTPS/);
   assert.throws(() => parseWorkerConfig({ WORKER_MODE: "testnet", STELLAR_RPC_URL: "http://rpc.example" }), /HTTPS/);
   assert.throws(() => parseWorkerConfig({ WORKER_MODE: "testnet", STELLAR_RPC_URL: "https://user:pw@rpc.example" }), /HTTPS/);

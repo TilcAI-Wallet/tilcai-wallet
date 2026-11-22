@@ -12,7 +12,7 @@ function event(source:string, options:{asset?:string; recipient?:string; amount?
   return new xdr.ContractEvent({ext:xdr.ExtensionPoint.v0(),contractId:new xdr.ContractId(StrKey.decodeContract(options.asset ?? asset)),type:xdr.ContractEventType.contract,body:xdr.ContractEventBody.v0(new xdr.ContractEventV0({topics:[nativeToScVal("transfer",{type:"symbol"}),new Address(source).toScVal(),new Address(options.recipient ?? recipient).toScVal()],data}))});
 }
 function setup(events:xdr.ContractEvent[], sample:ReturnType<typeof makeTestEnvelope>) {
-  const context={keyId:"test",tenantId:"tenant",orderId:"order",attemptId:"attempt",agent:sample.agent,contractId:sample.contractId,transactionHash:sample.hash,validThroughLedger:123};
+  const context={keyId:"test",tenantId:"tenant",orderId:"order",attemptId:"attempt",agent:sample.agent,contractId:sample.contractId,transactionHash:sample.hash,validThroughLedger:123,policyRevision:sample.policyRevision};
   const decoded=TransactionBuilder.fromXDR(sample.bytes.toString("base64"),Networks.TESTNET);
   const server={getNetwork:async()=>({passphrase:Networks.TESTNET}),getTransaction:async()=>({status:rpc.Api.GetTransactionStatus.SUCCESS,txHash:sample.hash,ledger:110,envelopeXdr:decoded.toEnvelope(),events:{contractEventsXdr:[events]}})} as unknown as Pick<Rpc.Server,"getNetwork"|"getTransaction">;
   return {server,context};

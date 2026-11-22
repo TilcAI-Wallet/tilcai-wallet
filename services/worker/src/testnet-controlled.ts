@@ -34,8 +34,9 @@ export async function processControlledTestnetOnce(options: {
   if (!snapshot) return "lease_lost";
   if (snapshot.asset_id!==usdc || snapshot.recipient!==recipient || snapshot.agent!==options.signer.publicKey || BigInt(snapshot.amount)!==5_000_000n || snapshot.order_id!==task.order_id) throw new Error("unauthorized Testnet resource");
   if (snapshot.attempt_state === "created") {
+    if (snapshot.policy_revision===null || snapshot.policy_revision===undefined) throw new Error("card has no reviewed WalletFoundation policy revision");
     const key=await options.keyForId(options.keyId);
-    await prepareAndPersistTestnet(pool,options.rpc,options.signer,lease,{orderId:task.order_id,attemptId:snapshot.attempt_id,contractId:snapshot.contract_id,keyId:options.keyId},key);
+    await prepareAndPersistTestnet(pool,options.rpc,options.signer,lease,{orderId:task.order_id,attemptId:snapshot.attempt_id,contractId:snapshot.contract_id,keyId:options.keyId,policyRevision:BigInt(snapshot.policy_revision)},key);
   }
   const loaded=await loadTestnetEnvelope(pool,lease,snapshot.attempt_id,options.keyForId);
   if (!loaded) return "lease_lost";

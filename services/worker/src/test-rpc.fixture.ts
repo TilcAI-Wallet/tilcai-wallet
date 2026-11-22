@@ -12,7 +12,7 @@ export function transferEvent(source: string, options: { asset?: string; recipie
     })) });
 }
 
-export type RpcOutcome = "not_found" | "timeout" | "verified" | "wrong_recipient" | "wrong_amount";
+export type RpcOutcome = "not_found" | "timeout" | "verified" | "wrong_recipient" | "wrong_amount" | "failed";
 /** SIMULATED read-only RPC for tests. It has no send method and never touches a network. */
 export function simulatedReadRpc(sample: { bytes: Buffer; hash: string; contractId: string }, outcome: RpcOutcome, ledger = 110): TestnetReadRpc & { lookups: number } {
   const state = { lookups: 0 };
@@ -26,6 +26,9 @@ export function simulatedReadRpc(sample: { bytes: Buffer; hash: string; contract
       state.lookups++;
       if (outcome === "timeout") throw new Error("SIMULATED timeout");
       if (outcome === "not_found") return { status: rpc.Api.GetTransactionStatus.NOT_FOUND, txHash: sample.hash };
+      // Included but reverted, e.g. Error(Contract, #5) PolicyChanged after a set_policy before execution.
+      if (outcome === "failed") return { status: rpc.Api.GetTransactionStatus.FAILED, txHash: sample.hash, ledger,
+        envelopeXdr: TransactionBuilder.fromXDR(sample.bytes.toString("base64"), Networks.TESTNET).toEnvelope(), events: { contractEventsXdr: [[]] } };
       const event = outcome === "wrong_recipient" ? transferEvent(sample.contractId, { recipient: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5" })
         : outcome === "wrong_amount" ? transferEvent(sample.contractId, { amount: 5_000_001n }) : transferEvent(sample.contractId);
       return { status: rpc.Api.GetTransactionStatus.SUCCESS, txHash: sample.hash, ledger,

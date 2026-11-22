@@ -47,6 +47,12 @@ DO $$ BEGIN
                              AND r.policyname='api_credential_scope' AND r.permissive='RESTRICTIVE' AND r.roles='{wallet_api}')) THEN
     RAISE EXCEPTION 'tenant table without credential-bound API policy';
   END IF;
+  -- WalletFoundation v2: the v1 spend(amount) envelope storage entry point no longer exists.
+  IF to_regprocedure('wallet_private.store_testnet_envelope(text,text,text,text,text,text,text,text,bigint,text,bytea,bytea,bytea,bytea)') IS NOT NULL OR
+     NOT has_function_privilege('wallet_worker','wallet_private.store_testnet_envelope(text,text,text,text,text,text,text,text,bigint,text,bytea,bytea,bytea,bytea,bigint)','EXECUTE') OR
+     has_function_privilege('wallet_api','wallet_private.store_testnet_envelope(text,text,text,text,text,text,text,text,bigint,text,bytea,bytea,bytea,bytea,bigint)','EXECUTE') THEN
+    RAISE EXCEPTION 'unexpected Testnet envelope storage interface';
+  END IF;
 END $$;
 -- Temporary INSERT grant isolates the RLS write test from privilege-denial tests.
 GRANT INSERT ON wallet_private.sessions TO wallet_api;

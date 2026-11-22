@@ -10,16 +10,16 @@ import { processControlledTestnetOnce, SimulatedTransport } from "./testnet-cont
 import { processTestnetPaymentOnce } from "./testnet-worker.js";
 import { testReportRecipient, testnetUsdcContract } from "./testnet-constants.js";
 
-function setup(options: { outcome?: RpcOutcome; attemptState?: string; loadable?: boolean; confirmResult?: boolean; recipient?: string } = {}) {
+function setup(options: { outcome?: RpcOutcome; attemptState?: string; loadable?: boolean; confirmResult?: boolean; recipient?: string; legacy?: boolean } = {}) {
   const sample = makeTestEnvelope(), key = randomBytes(32);
-  const context = { keyId: "test", tenantId: "tenant", orderId: "order", attemptId: "attempt", contractId: sample.contractId, agent: sample.agent, transactionHash: sample.hash, validThroughLedger: 123 };
+  const context = { keyId: "test", tenantId: "tenant", orderId: "order", attemptId: "attempt", contractId: sample.contractId, agent: sample.agent, transactionHash: sample.hash, validThroughLedger: 123, policyRevision: sample.policyRevision };
   const stored = sealEnvelope(key, context, sample.bytes);
   const calls: Array<{ sql: string; args: unknown[] }> = [];
   const pool = { query: async (sql: string, args: unknown[] = []) => {
     calls.push({ sql, args });
     if (sql.includes("claim_testnet(")) return { rows: [{ tenant_id: "tenant", event_id: "event", order_id: "order", lease_token: "token" }] };
-    if (sql.includes("read_testnet_task")) return { rows: [{ order_id: "order", attempt_id: "attempt", attempt_state: options.attemptState ?? "prepared", contract_id: sample.contractId, agent: sample.agent, asset_id: testnetUsdcContract, recipient: options.recipient ?? testReportRecipient, amount: "5000000" }] };
-    if (sql.includes("load_testnet_envelope")) return { rows: options.loadable === false ? [] : [{ key_id: "test", nonce: stored.nonce, ciphertext: stored.ciphertext, tag: stored.tag, xdr_digest: stored.xdrDigest, tx_hash: sample.hash, valid_through_ledger: 123, order_id: "order", contract_id: sample.contractId, agent: sample.agent }] };
+    if (sql.includes("read_testnet_task")) return { rows: [{ order_id: "order", attempt_id: "attempt", attempt_state: options.attemptState ?? "prepared", contract_id: sample.contractId, agent: sample.agent, asset_id: testnetUsdcContract, recipient: options.recipient ?? testReportRecipient, amount: "5000000", policy_revision: "0" }] };
+    if (sql.includes("load_testnet_envelope")) return { rows: options.loadable === false ? [] : [{ key_id: "test", nonce: stored.nonce, ciphertext: stored.ciphertext, tag: stored.tag, xdr_digest: stored.xdrDigest, tx_hash: sample.hash, valid_through_ledger: 123, order_id: "order", contract_id: sample.contractId, agent: sample.agent, spend_interface: options.legacy ? 1 : 2, policy_revision: options.legacy ? null : "0" }] };
     if (sql.includes("renew_fixture")) return { rows: [{ owned: true }] };
     if (sql.includes("confirm_testnet_payment")) return { rows: [{ confirmed: options.confirmResult ?? true }] };
     if (sql.includes("mark_testnet_uncertain")) return { rows: [{ changed: true }] };
@@ -83,4 +83,32 @@ test("SIMULATED: the controlled simulated transport never records a confirmation
   const pool = { query: async (sql: string, args: unknown[]) => sql.includes("claim_testnet(") || sql.includes("read_testnet_task") || sql.includes("load_testnet_envelope") || sql.includes("renew_fixture") || sql.includes("mark_testnet_uncertain") ? state.run.pool.query(sql, args) : Promise.reject(new Error(`unexpected ${sql}`)) } as unknown as Pool;
   assert.equal(await processControlledTestnetOnce({ pool, rpc: state.rpc, signer: state.run.signer, keyId: "test", keyForId: state.run.keyForId, transport, allowSimulatedSend: true }), "simulated_verified");
   assert.equal(confirms(state.calls), 0);
+});
+
+test("SIMULATED: a v1 envelope is reported, never decrypted for use, re-signed or confirmed", async () => {
+  const legacy = setup({ outcome: "verified", legacy: true });
+  assert.equal(await processTestnetPaymentOnce(legacy.run), "legacy_envelope");
+  assert.equal(legacy.rpc.lookups, 0);
+  assert.equal(confirms(legacy.calls), 0);
+  assert.equal(legacy.calls.some((call) => call.sql.includes("store_testnet_envelope")), false);
+});
+
+test("SIMULATED: a policy change before execution (reverted transaction) keeps the order and creates no new charge", async () => {
+  for (const attemptState of ["prepared", "uncertain"]) {
+    const reverted = setup({ outcome: "failed", attemptState });
+    assert.equal(await processTestnetPaymentOnce(reverted.run), attemptState === "uncertain" ? "awaiting_evidence" : "awaiting_broadcast");
+    assert.equal(confirms(reverted.calls), 0);
+    assert.equal(reverted.calls.some((call) => call.sql.includes("store_testnet_envelope")), false);
+  }
+});
+
+test("a new attempt without a reviewed policy revision fails closed before signing", async () => {
+  const state = setup({ attemptState: "created" });
+  const pool = { query: async (sql: string, args: unknown[] = []) => {
+    const result = await state.run.pool.query(sql, args);
+    if (sql.includes("read_testnet_task")) return { rows: [{ ...result.rows[0], policy_revision: null }] };
+    return result;
+  } } as unknown as Pool;
+  await assert.rejects(() => processTestnetPaymentOnce({ ...state.run, pool }), /no reviewed WalletFoundation policy revision/);
+  assert.equal(state.calls.some((call) => call.sql.includes("store_testnet_envelope")), false);
 });

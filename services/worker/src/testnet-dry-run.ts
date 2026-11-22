@@ -1,14 +1,18 @@
 import { Account, Address, Contract, Keypair, Networks, TransactionBuilder, nativeToScVal, rpc, scValToNative } from "@stellar/stellar-sdk";
 import { assertPaymentPolicy, type PaymentPolicy } from "./payment-safety.js";
+import { assertPolicyRevision, isExpectedSpendCall, walletFoundationVersion } from "./spend-interface.js";
+import { testReportAmount, testReportRecipient, testnetUsdcContract } from "./testnet-constants.js";
 
-const asset = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
-const recipient = "GAGK4SEOVSZDQXSBMO6KMUHNH36B3E2AZFDINVDFVRVV2ZYLP577OSHX";
 const exhaustedDemo = "CDCSGJZCHL5SOYURXLZ6YZQGWIOFN3FDREKJ27LGPPPCFJRIPPLIVLT6";
 type ReadRpc = Pick<rpc.Server, "getNetwork" | "getLatestLedger" | "getAccount" | "simulateTransaction">;
 export interface AgentSigner { publicKey: string; signHash(hash: Uint8Array): Promise<Uint8Array> }
+export interface PreparedSpend { envelope: Buffer; hash: string; validThroughLedger: number; policyRevision: bigint }
 
-/** Builds, simulates and signs only. This module has no broadcast method. */
-export async function prepareTestnetDryRun(server: ReadRpc, signer: AgentSigner, contractId: string): Promise<{ envelope: Buffer; hash: string; validThroughLedger: number }> {
+/** Builds, simulates and signs only. This module has no broadcast method.
+ * Requires WalletFoundation v2 and the reviewed policy revision; signs exactly
+ * spend(0.50 USDC, test recipient, expected_policy_revision). */
+export async function prepareTestnetDryRun(server: ReadRpc, signer: AgentSigner, contractId: string, expectedPolicyRevision: bigint): Promise<PreparedSpend> {
+  assertPolicyRevision(expectedPolicyRevision);
   if (contractId === exhaustedDemo) throw new Error("historical contract is exhausted");
   const contract = new Contract(contractId);
   const agent = Keypair.fromPublicKey(signer.publicKey);
@@ -26,15 +30,23 @@ export async function prepareTestnetDryRun(server: ReadRpc, signer: AgentSigner,
     if (!rpc.Api.isSimulationSuccess(sim) || rpc.Api.isSimulationRestore(sim) || !sim.result || sim.latestLedger < latest || sim.latestLedger > latest + 5) throw new Error("simulation unavailable or stale");
     return sim;
   }
-  const policyResult = await simulate(build(contract.call("policy")));
-  const raw = scValToNative(policyResult.result!.retval) as Record<string, unknown>;
+  // v1 contracts expose spend(amount) without recipient or revision binding and are rejected.
+  const version = scValToNative((await simulate(build(contract.call("version")))).result!.retval);
+  if (version !== walletFoundationVersion) throw new Error("unsupported WalletFoundation version: v2 required");
+  // policy_state returns policy and revision from one invocation, so they are consistent.
+  const state = scValToNative((await simulate(build(contract.call("policy_state")))).result!.retval) as unknown;
+  if (!Array.isArray(state) || state.length !== 2) throw new Error("invalid on-chain policy state");
+  const raw = state[0] as Record<string, unknown>, revision = state[1] as unknown;
   if (typeof raw !== "object" || raw === null || typeof raw.agent !== "string" || typeof raw.asset !== "string" || typeof raw.recipient !== "string" || typeof raw.frozen !== "boolean" || typeof raw.max_per_payment !== "bigint" || typeof raw.limit !== "bigint" || typeof raw.spent !== "bigint") throw new Error("invalid on-chain policy");
+  assertPolicyRevision(revision);
+  if (revision !== expectedPolicyRevision) throw new Error("policy revision differs from the reviewed revision");
   const policy: PaymentPolicy = {contract:contractId,agent:raw.agent,asset:raw.asset,recipient:raw.recipient,frozen:raw.frozen,maxPerPayment:raw.max_per_payment,limit:raw.limit,spent:raw.spent};
-  assertPaymentPolicy(policy,{contract:contractId,agent:signer.publicKey,asset,recipient,amount:5_000_000n});
-  const balanceResult = await simulate(build(new Contract(asset).call("balance",new Address(contractId).toScVal())));
+  assertPaymentPolicy(policy,{contract:contractId,agent:signer.publicKey,asset:testnetUsdcContract,recipient:testReportRecipient,amount:testReportAmount});
+  const balanceResult = await simulate(build(new Contract(testnetUsdcContract).call("balance",new Address(contractId).toScVal())));
   const balance = scValToNative(balanceResult.result!.retval);
-  if (typeof balance !== "bigint" || balance < 5_000_000n) throw new Error("insufficient on-chain balance");
-  const rawTx = build(contract.call("spend",nativeToScVal(5_000_000n,{type:"i128"})));
+  if (typeof balance !== "bigint" || balance < testReportAmount) throw new Error("insufficient on-chain balance");
+  const rawTx = build(contract.call("spend",nativeToScVal(testReportAmount,{type:"i128"}),new Address(testReportRecipient).toScVal(),nativeToScVal(revision,{type:"u64"})));
+  // A policy change after policy_state makes this simulation fail with PolicyChanged.
   const simulation = await simulate(rawTx);
   const auth = simulation.result!.auth;
   // Only a single source-account agent authorization is supported. Separate Soroban
@@ -43,11 +55,11 @@ export async function prepareTestnetDryRun(server: ReadRpc, signer: AgentSigner,
   const invocation = auth[0]!.rootInvocation;
   if (invocation.function.type !== "sorobanAuthorizedFunctionTypeContractFn" || invocation.subInvocations.length !== 0) throw new Error("unexpected authorization tree");
   const call = invocation.function.contractFn;
-  if (Address.fromScAddress(call.contractAddress).toString() !== contractId || call.functionName.toString() !== "spend" || call.args.length !== 1 || scValToNative(call.args[0]!) !== 5_000_000n) throw new Error("unexpected authorized invocation");
+  if (!isExpectedSpendCall(Address.fromScAddress(call.contractAddress).toString(),call.functionName.toString(),call.args,contractId,revision)) throw new Error("unexpected authorized invocation");
   const transaction = rpc.assembleTransaction(rawTx,simulation).build();
   if (BigInt(transaction.fee) > 2_000_000n) throw new Error("simulation fee exceeds limit");
   const signature = await signer.signHash(transaction.hash());
   if (signature.length !== 64 || !agent.verify(transaction.hash(),signature)) throw new Error("invalid agent signature");
   transaction.addSignature(signer.publicKey,Buffer.from(signature).toString("base64"));
-  return { envelope:Buffer.from(transaction.toEnvelope().toXDR()),hash:Buffer.from(transaction.hash()).toString("hex"),validThroughLedger };
+  return { envelope:Buffer.from(transaction.toEnvelope().toXDR()),hash:Buffer.from(transaction.hash()).toString("hex"),validThroughLedger,policyRevision:revision };
 }

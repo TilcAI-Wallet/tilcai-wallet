@@ -57,3 +57,7 @@ otro tenant y una segunda credencial de otro tenant en la misma transacción se 
 Riesgo residual: quien tenga el login de API y un token válido de un tenant actúa como ese
 tenant; dentro del tenant, RLS no separa sesiones salvo en `lock_card`. El worker
 asignado sigue siendo de confianza para verificar el RPC antes de `confirm_testnet_payment`.
+
+La migración 009 integra WalletFoundation v2: `cards.policy_revision` (revisión revisada por un
+administrador), interfaz y revisión por sobre cifrado, eliminación de `store_testnet_envelope` v1 y
+confirmación solo para sobres v2. Los sobres v1 existentes se conservan para auditoría.
