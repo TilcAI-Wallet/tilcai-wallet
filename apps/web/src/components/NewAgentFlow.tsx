@@ -1,0 +1,330 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
+import { connectAgentAction } from "@/app/actions";
+import { agentClients, type AgentClient } from "@/lib/ledger";
+import { verifyPasskey } from "@/lib/passkey";
+import { Icon, type IconName } from "./Icon";
+import { Logo } from "./Logo";
+import { primaryButton, secondaryButton } from "./Screen";
+import { Banner, Field } from "./ui";
+
+type Step = 1 | 2 | 3 | 4;
+
+const clients: { id: AgentClient; icon: IconName; alias: string; config: (code: string) => string; where: string }[] = [
+  {
+    id: "claude",
+    icon: "asterisk",
+    alias: "Claude · Portátil",
+    where: "Abre la configuración MCP de Claude Code (archivo .mcp.json de tu proyecto).",
+    config: (code) =>
+      `{\n  "mcpServers": {\n    "tilcai-wallet": {\n      "command": "pnpm",\n      "args": ["--filter", "@tilcai-wallet/mcp", "start"],\n      "env": { "TILCAI_PAIRING_CODE": "${code}" }\n    }\n  }\n}`,
+  },
+  {
+    id: "codex",
+    icon: "hexagon",
+    alias: "Codex · Escritorio",
+    where: "Abre la configuración MCP de Codex (archivo ~/.codex/config.toml).",
+    config: (code) =>
+      `[mcp_servers.tilcai-wallet]\ncommand = "pnpm"\nargs = ["--filter", "@tilcai-wallet/mcp", "start"]\nenv = { TILCAI_PAIRING_CODE = "${code}" }`,
+  },
+];
+
+const permissions = [
+  { title: "Consultar saldo", detail: "Ver el estado de su tarjeta." },
+  { title: "Solicitar compras", detail: "Enviar solicitudes de pago." },
+  { title: "Ver sus recibos", detail: "Consultar el historial de sus compras." },
+];
+
+const tile = "flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink";
+
+export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
+  const [step, setStep] = useState<Step>(1);
+  const [clientId, setClientId] = useState<AgentClient>("claude");
+  const [alias, setAlias] = useState(clients[0]!.alias);
+  const [aliasError, setAliasError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<"idle" | "ok" | "failed">("idle");
+  const [help, setHelp] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [agentId, setAgentId] = useState<string>();
+  const [pending, start] = useTransition();
+  const client = clients.find((c) => c.id === clientId)!;
+  const clientName = agentClients[clientId].name;
+
+  // shortcut: la conexión del agente se simula con una espera; con el MCP real llegará por sondeo o notificación del servidor.
+  useEffect(() => {
+    if (step !== 2) return;
+    const timer = setTimeout(() => setStep(3), 7000);
+    return () => clearTimeout(timer);
+  }, [step]);
+
+  function choose(next: AgentClient) {
+    const previous = clients.find((c) => c.id === clientId)!;
+    setClientId(next);
+    // Si la persona no tocó el alias, acompaña al cliente elegido.
+    if (alias === previous.alias) setAlias(clients.find((c) => c.id === next)!.alias);
+  }
+
+  function next() {
+    const clean = alias.trim();
+    if (clean.length < 2 || clean.length > 30) return setAliasError("El alias debe tener entre 2 y 30 caracteres.");
+    setAliasError(null);
+    setStep(2);
+  }
+
+  function approve() {
+    start(async () => {
+      setError(null);
+      const check = await verifyPasskey();
+      if (!check.ok && check.reason === "cancelled") return setError("Cancelaste la verificación. No se aprobó nada.");
+      if (!check.ok && check.reason === "error") return setError("No pudimos verificar tu passkey. No se aprobó nada.");
+      if (!check.ok || check.simulated) setNote("La verificación con passkey se simuló en este dispositivo.");
+      const result = await connectAgentAction(clientId, alias);
+      if (!result.ok) return setError(result.error);
+      setAgentId(result.id);
+      setStep(4);
+    });
+  }
+
+  const back = step === 1 || step === 4 ? undefined : () => setStep((step - 1) as Step);
+  const backClass = "flex size-11 items-center justify-center rounded-full text-ivory";
+
+  return (
+    <div className="flex min-h-[calc(100dvh-7rem)] flex-col gap-5">
+      <header className="flex flex-col gap-3">
+        <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center">
+          {back ? (
+            <button type="button" onClick={back} aria-label="Paso anterior" className={backClass}>
+              <Icon name="back" size={26} />
+            </button>
+          ) : (
+            <Link href="/wallet/agents" aria-label="Volver a agentes" className={backClass}>
+              <Icon name="back" size={26} />
+            </Link>
+          )}
+          <span className="flex items-center justify-center gap-2">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-accent">
+              <Logo size={22} color="bg-ink" />
+            </span>
+            <span className="flex items-baseline gap-1.5 text-2xl">
+              Tilcai <span className="text-sm tracking-[0.2em]">WALLET</span>
+            </span>
+          </span>
+        </div>
+        <div className="flex gap-2" aria-hidden="true">
+          {[1, 2, 3, 4].map((n) => (
+            <span key={n} className={`h-2 flex-1 rounded-full ${n <= step ? "bg-accent" : "bg-ivory/20"}`} />
+          ))}
+        </div>
+        <p className="text-center text-sm text-ivory/80">Paso {step} de 4</p>
+      </header>
+
+      {step === 1 && (
+        <>
+          <section>
+            <h1 className="text-4xl tracking-tight">Nuevo agente</h1>
+            <p className="text-base text-ivory/80">Elige el cliente que quieres conectar.</p>
+          </section>
+          <div role="radiogroup" aria-label="Cliente del agente" className="flex flex-col gap-3">
+            {clients.map((c) => {
+              const on = c.id === clientId;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => choose(c.id)}
+                  className={`flex min-h-20 items-center gap-3 rounded-3xl border p-3 text-left ${on ? "border-accent bg-accent text-ink" : "border-ivory/50"}`}
+                >
+                  <span className={on ? "flex size-12 shrink-0 items-center justify-center text-ink" : "flex size-12 shrink-0 items-center justify-center text-ivory"}>
+                    <Icon name={c.icon} size={34} />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="text-xl">{agentClients[c.id].name}</span>
+                    <span className={`text-sm ${on ? "text-ink/80" : "text-ivory/75"}`}>{agentClients[c.id].role}.</span>
+                  </span>
+                  <span className={`flex size-7 shrink-0 items-center justify-center rounded-full ${on ? "bg-ink text-accent" : "border-2 border-ivory/50"}`}>
+                    {on && <Icon name="check" size={18} strokeWidth={2.8} />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-2">
+            <Field
+              label="Alias del agente"
+              name="alias"
+              autoComplete="off"
+              maxLength={30}
+              value={alias}
+              onChange={(e) => {
+                setAlias(e.target.value);
+                setAliasError(null);
+              }}
+              error={aliasError}
+              hint="Así lo verás en tu lista de agentes."
+            />
+          </div>
+          <div className="mt-auto">
+            <button type="button" onClick={next} className={`${primaryButton} gap-2`}>
+              Continuar
+              <Icon name="arrow" size={24} />
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 2 && (
+        <>
+          <section>
+            <h1 className="text-4xl tracking-tight">Conectar con MCP</h1>
+            <p className="text-base text-ivory/80">Configura Tilcai Wallet en tu computadora.</p>
+          </section>
+          <section className="flex flex-col gap-3 rounded-3xl border border-ivory/25 bg-surface p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-ivory">
+                <Icon name="server" size={32} />
+              </span>
+              <h2 className="text-xl">Servidor MCP de Tilcai</h2>
+            </div>
+            <p className="text-base text-ivory/80">Agrega este servidor en {clientName} para vincular tu agente con tu wallet.</p>
+            <button
+              type="button"
+              className={`${primaryButton} gap-2`}
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(client.config(pairingCode));
+                  setCopied("ok");
+                } catch {
+                  setCopied("failed");
+                }
+              }}
+            >
+              <Icon name="copy" size={22} />
+              Copiar configuración
+            </button>
+            <button type="button" aria-expanded={help} onClick={() => setHelp((v) => !v)} className={`${secondaryButton} gap-2`}>
+              <Icon name="external" size={22} />
+              Ver instrucciones
+            </button>
+            {copied === "ok" && <Banner tone="ok">Configuración copiada.</Banner>}
+            {copied === "failed" && <Banner tone="error">No se pudo copiar. Abre «Ver instrucciones» y cópiala a mano.</Banner>}
+            {help && (
+              <div className="flex flex-col gap-2 rounded-2xl border border-ivory/30 p-3 text-base text-ivory/85">
+                <ol className="flex flex-col gap-1.5">
+                  <li>1. {client.where}</li>
+                  <li>2. Pega la configuración. Incluye tu código de un solo uso.</li>
+                  <li>3. Reinicia {clientName} y abre una sesión.</li>
+                  <li>4. Vuelve aquí: la conexión se detecta sola.</li>
+                </ol>
+                <pre className="font-data overflow-x-auto rounded-xl bg-ivory/10 p-3 text-xs whitespace-pre">{client.config(pairingCode)}</pre>
+              </div>
+            )}
+          </section>
+          <section className="flex items-center gap-4 rounded-3xl border border-ivory/25 bg-surface p-4" role="status">
+            <span className="size-11 shrink-0 animate-spin rounded-full border-4 border-accent/25 border-t-accent motion-reduce:animate-none" aria-hidden="true" />
+            <div>
+              <h2 className="text-xl">Esperando conexión…</h2>
+              <p className="text-base text-ivory/80">Mantén {clientName} abierto y completa la conexión.</p>
+            </div>
+          </section>
+          <button type="button" onClick={() => setStep(3)} className="flex min-h-11 w-fit items-center self-center text-accent">
+            Simular que el agente se conectó
+          </button>
+        </>
+      )}
+
+      {step === 3 && (
+        <>
+          <section>
+            <h1 className="text-4xl tracking-tight">Aprobar acceso</h1>
+            <p className="text-base text-ivory/80">Se detectó una solicitud de conexión de un agente.</p>
+          </section>
+          <section className="flex items-center gap-3 rounded-3xl border border-ivory/25 bg-surface p-3">
+            <span className={tile}>
+              <Icon name="laptop" size={28} />
+            </span>
+            <div className="min-w-0">
+              <h2 className="truncate text-xl">{alias.trim()}</h2>
+              <p className="text-sm text-ivory/75">Nueva sesión entrante</p>
+            </div>
+          </section>
+          <section>
+            <h2 className="mb-2 text-lg">Permisos solicitados</h2>
+            <ul className="flex flex-col gap-3">
+              {permissions.map((p) => (
+                <li key={p.title} className="flex items-start gap-3">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-mint text-ink">
+                    <Icon name="check" size={20} strokeWidth={2.8} />
+                  </span>
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-lg">{p.title}</span>
+                    <span className="text-sm text-ivory/75">{p.detail}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+          <p className="flex items-center gap-3 rounded-3xl border border-ivory/60 p-4 text-base">
+            <Icon name="info" size={26} />
+            Sin acceso a fondos hasta activar una tarjeta.
+          </p>
+          {error && <Banner tone="error">{error}</Banner>}
+          <div className="mt-auto flex flex-col gap-3">
+            <button type="button" disabled={pending} onClick={approve} className={`${primaryButton} gap-2 disabled:opacity-60`}>
+              <Icon name="fingerprint" size={26} />
+              {pending ? "Esperando a tu dispositivo…" : "Aprobar con passkey"}
+            </button>
+            <button type="button" onClick={() => setStep(2)} className={secondaryButton}>
+              Rechazar
+            </button>
+          </div>
+        </>
+      )}
+
+      {step === 4 && (
+        <>
+          <section className="flex flex-col items-center gap-3 pt-2 text-center">
+            <span className="flex size-20 items-center justify-center rounded-full bg-mint text-ink">
+              <Icon name="check" size={46} strokeWidth={2.6} />
+            </span>
+            <h1 className="text-4xl tracking-tight">¡Agente conectado!</h1>
+            <p className="text-base text-ivory/80">{clientName} ya está vinculado a tu cuenta en Tilcai Wallet.</p>
+          </section>
+          <section className="rounded-3xl border border-ivory/25 bg-surface p-3">
+            <div className="flex items-center gap-3">
+              <span className={tile}>
+                <Icon name="laptop" size={28} />
+              </span>
+              <div className="min-w-0">
+                <h2 className="truncate text-xl">{alias.trim()}</h2>
+                <p className="flex items-center gap-2 text-sm text-mint">
+                  <span className="size-2 rounded-full bg-mint" />
+                  Acceso de lectura activo
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 flex items-center gap-3 border-t border-ivory/20 pt-3 text-base">
+              <Icon name="card" size={24} />
+              <span className="flex-1">Tarjeta: sin activar</span>
+              <Icon name="info" size={22} />
+            </p>
+          </section>
+          <p className="text-center text-base text-ivory/80">El agente puede consultar tu cuenta. Para que realice compras, configura una tarjeta y define sus límites.</p>
+          {note && <Banner tone="info">{note}</Banner>}
+          <div className="mt-auto flex flex-col gap-3">
+            <Link href={`/wallet/agents/${agentId}/card`} className={primaryButton}>
+              Configurar tarjeta y límites
+            </Link>
+            <Link href="/wallet/agents" className={secondaryButton}>
+              Ahora no
+            </Link>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

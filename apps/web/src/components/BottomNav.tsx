@@ -14,6 +14,8 @@ const tabs: { href: string; label: string; icon: IconName }[] = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  // El asistente de «Nuevo agente» ocupa toda la pantalla.
+  if (pathname.startsWith("/wallet/agents/new")) return null;
   return (
     <nav
       aria-label="Principal"
