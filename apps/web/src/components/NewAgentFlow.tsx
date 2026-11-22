@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
-import { approvePairingAction, createPairingAction, pairingStatusAction, rejectPairingAction } from "@/app/actions";
+import { approvePairingAction, createPairingAction, pairingStatusAction, rejectPairingAction, simulateConnectionAction } from "@/app/actions";
 import { agentClients, type AgentClient } from "@/lib/ledger";
 import { verifyPasskey } from "@/lib/passkey";
 import { Icon, type IconName } from "./Icon";
@@ -30,6 +30,12 @@ const clients: { id: AgentClient; icon: IconName; alias: string; config: (url: s
     config: (url) => `[mcp_servers.tilcai-wallet]\nurl = "${url}"`,
     app: "En la app o la web de ChatGPT: Ajustes → Conectores → Modo desarrollador → Crear, y pega la URL.",
   },
+];
+
+// Enlaces universales: en el celular abren la app instalada de Claude o de ChatGPT; si no está, abren la web.
+const apps: { name: string; href: string; icon: IconName }[] = [
+  { name: "Claude", href: "https://claude.ai/settings/connectors", icon: "asterisk" },
+  { name: "ChatGPT", href: "https://chatgpt.com/#settings/Connectors", icon: "hexagon" },
 ];
 
 const permissions = [
@@ -242,6 +248,22 @@ export function NewAgentFlow() {
               <Icon name="external" size={22} />
               Ver instrucciones
             </button>
+            <div className="grid grid-cols-2 gap-3">
+              {apps.map((app) => (
+                <a
+                  key={app.name}
+                  href={app.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => void copy(url, "url")}
+                  className="flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-accent px-2 text-base whitespace-nowrap text-accent"
+                >
+                  <Icon name={app.icon} size={22} />
+                  Abrir {app.name}
+                </a>
+              ))}
+            </div>
+            <p className="text-sm text-ivory/70">Al abrir la app copiamos la URL: pégala al crear el conector personalizado.</p>
             {copied === "config" && <Banner tone="ok">Configuración copiada.</Banner>}
             {copied === "url" && <Banner tone="ok">URL copiada.</Banner>}
             {copied === "failed" && <Banner tone="error">No se pudo copiar. Abre «Ver instrucciones» y cópiala a mano.</Banner>}
@@ -284,8 +306,21 @@ export function NewAgentFlow() {
               </div>
             </section>
           )}
-          <button type="button" onClick={() => setStep(3)} className="flex min-h-11 w-fit items-center self-center text-accent">
-            Continuar sin conectar (demo)
+          {error && <Banner tone="error">{error}</Banner>}
+          <button
+            type="button"
+            disabled={pending || !code}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                const result = await simulateConnectionAction(code ?? "");
+                if (!result.ok) return setError(result.error);
+                setStep(3);
+              })
+            }
+            className="flex min-h-11 w-fit items-center self-center text-accent disabled:opacity-60"
+          >
+            Simular conexión del agente (MCP simulado)
           </button>
         </>
       )}
@@ -369,7 +404,7 @@ export function NewAgentFlow() {
           <p className="text-center text-base text-ivory/80">El agente puede consultar tu cuenta. Para que realice compras, configura una tarjeta y define sus límites.</p>
           {note && <Banner tone="info">{note}</Banner>}
           <div className="mt-auto flex flex-col gap-3">
-            <Link href={`/wallet/agents/${agentId}/card`} className={primaryButton}>
+            <Link href={agentId ? `/wallet/agents/${agentId}/card` : "/wallet/agents"} className={primaryButton}>
               Configurar tarjeta y límites
             </Link>
             <Link href="/wallet/agents" className={secondaryButton}>
