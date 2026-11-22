@@ -15,12 +15,10 @@ export default async function Welcome() {
         <Lockup />
       </header>
       <section className="flex flex-col gap-3">
-        <h1 className="text-4xl leading-[1.05] tracking-tight">
-          Tu wallet.
-          <br />
-          Tus agentes.
-          <br />
-          Tú pones los límites.
+        <h1 className="reveal-lines text-4xl leading-[1.05] tracking-tight">
+          <span className="block">Tu wallet.</span>
+          <span className="block">Tus agentes.</span>
+          <span className="block">Tú pones los límites.</span>
         </h1>
         <p className="text-base text-ivory/75">Gestiona sesiones, asigna presupuestos y controla compras de IA con total claridad.</p>
       </section>

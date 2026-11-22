@@ -57,7 +57,7 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-ink/80">
+    <div className="install-backdrop fixed inset-0 z-50 flex items-end bg-ink/80">
       <section
         role="dialog"
         aria-modal="true"

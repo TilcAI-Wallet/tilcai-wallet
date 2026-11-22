@@ -32,8 +32,10 @@ export function WalletArt({ icons, className }: { icons: readonly [IconName, Ico
       <ellipse cx="200" cy="323" rx="136" ry="22" fill={`url(#${id}-floor)`} />
 
       {tiles.map((tile, i) => (
-        <g key={`glow-${i}`} transform={`rotate(${tile.rotate} ${tile.x + size / 2} ${tile.y + size / 2})`}>
-          <rect x={tile.x + 4} y={tile.y + 8} width={size - 8} height={size - 8} rx="24" fill="#c8a6ff" opacity=".3" filter={`url(#${id}-glow)`} />
+        <g key={`glow-${i}`} className="float" style={{ animationDelay: `${i * -1.6}s` }}>
+          <g transform={`rotate(${tile.rotate} ${tile.x + size / 2} ${tile.y + size / 2})`}>
+            <rect x={tile.x + 4} y={tile.y + 8} width={size - 8} height={size - 8} rx="24" fill="#c8a6ff" opacity=".3" filter={`url(#${id}-glow)`} />
+          </g>
         </g>
       ))}
 
@@ -45,12 +47,14 @@ export function WalletArt({ icons, className }: { icons: readonly [IconName, Ico
       </g>
 
       {tiles.map((tile, i) => (
-        <g key={i} transform={`rotate(${tile.rotate} ${tile.x + size / 2} ${tile.y + size / 2})`}>
+        <g key={i} className="float" style={{ animationDelay: `${i * -1.6}s` }}>
+        <g transform={`rotate(${tile.rotate} ${tile.x + size / 2} ${tile.y + size / 2})`}>
           <rect x={tile.x} y={tile.y} width={size} height={size} rx="25" fill={`url(#${id}-tile)`} stroke="#c8a6ff" strokeOpacity=".22" strokeWidth="1.2" />
           <rect x={tile.x + 1} y={tile.y + 1} width={size - 2} height={size / 2} rx="24" fill="#fff" opacity=".04" />
           <g color="#f8f6ee">
             <Icon name={icons[i]!} x={tile.x + 21} y={tile.y + 21} size={47} strokeWidth={1.9} />
           </g>
+        </g>
         </g>
       ))}
 
