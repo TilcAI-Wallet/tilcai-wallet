@@ -1,7 +1,9 @@
-import { demoPurchase as purchase } from "../story/demo-purchase";
 import type { TerminalDemo } from "./channel-types";
 
-const status = "Recorrido MCP · stdio local";
+const launch = "pnpm --silent --filter @tilcai-wallet/mcp start";
+const install = "pnpm install --frozen-lockfile";
+const status = "Demostración · MCP local";
+const tool = "tilcai-wallet · get_card({})";
 
 export const agentDemos = [
   {
@@ -10,13 +12,11 @@ export const agentDemos = [
     theme: "claude",
     name: "Claude Code",
     status,
-    detail: "Conecta el servidor MCP local y autoriza la sesión para que el agente consulte su tarjeta.",
-    lines: [
-      { tone: "prompt", text: "Conecta TilcAI Wallet y revisa la tarjeta." },
-      { tone: "tool", text: "stdio → servidor tilcai-wallet" },
-      { tone: "tool", text: "Sesión autorizada → get_card" },
-      { tone: "result", text: `${purchase.agent} · Disponible: ${purchase.limit}` },
-    ],
+    detail: "Instala las dependencias del repo, registra el servidor y consulta la tarjeta de la sesión.",
+    setup: [install, `claude mcp add --transport stdio tilcai-wallet -- ${launch}`],
+    prompt: "Consulta mi saldo y el presupuesto de Codex.",
+    tool,
+    view: "mcp",
   },
   {
     id: "codex",
@@ -24,13 +24,11 @@ export const agentDemos = [
     theme: "codex",
     name: "Codex",
     status,
-    detail: "Con la sesión autorizada, el agente crea la orden y consulta su estado por MCP.",
-    lines: [
-      { tone: "prompt", text: "Compra el informe si entra en el límite." },
-      { tone: "tool", text: `get_card → tope ${purchase.limit}` },
-      { tone: "tool", text: "create_order → test-report" },
-      { tone: "result", text: `get_order → pago confirmado · ${purchase.payment}` },
-    ],
+    detail: "Registra el MCP de TilcAI en Codex. El agente consulta saldo y tope antes de comprar.",
+    setup: [install, `codex mcp add tilcai-wallet -- ${launch}`],
+    prompt: "¿Cuánto puedo gastar en esta sesión?",
+    tool,
+    view: "mcp",
   },
   {
     id: "opencode",
@@ -38,13 +36,11 @@ export const agentDemos = [
     theme: "opencode",
     name: "OpenCode",
     status,
-    detail: "Consulta el recibo desde otro cliente MCP. El historial sigue en la misma wallet.",
-    lines: [
-      { tone: "prompt", text: "Consulta el recibo de la última compra." },
-      { tone: "tool", text: "get_order → recibo disponible" },
-      { tone: "tool", text: "get_receipt → permiso, orden y pago" },
-      { tone: "result", text: `${purchase.order} · ${purchase.payment}` },
-    ],
+    detail: "Conecta el mismo servidor local en OpenCode y comprueba el presupuesto disponible.",
+    setup: [install, `opencode mcp add tilcai-wallet -- ${launch}`],
+    prompt: "Revisa el presupuesto de mi tarjeta.",
+    tool,
+    view: "mcp",
   },
 ] as const satisfies readonly TerminalDemo[];
 
@@ -53,11 +49,10 @@ export const cliDemo = {
   kind: "terminal",
   theme: "cli",
   name: "Terminal",
-  status: "CLI en desarrollo",
-  detail: "El CLI ya tiene una comprobación local. Las consultas de wallet por sesión son el siguiente paso.",
-  lines: [
-    { tone: "prompt", text: "pnpm --filter @tilcai-wallet/cli start health" },
-    { tone: "tool", text: "Consultando el gateway local…" },
-    { tone: "result", text: "Gateway local · respuesta OK" },
-  ],
+  status: "CLI local · Vista TUI",
+  detail: "El CLI comprueba el gateway con health. La ficha de saldo pertenece a la vista previa TUI.",
+  setup: [install],
+  prompt: "pnpm --filter @tilcai-wallet/cli start health",
+  tool: "GET /healthz",
+  view: "health",
 } as const satisfies TerminalDemo;
