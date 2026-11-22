@@ -3,11 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fixtures": "./src/fixtures.ts"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "openapi": "tsx src/openapi.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test src/*.test.ts"
   },
   "dependencies": {
+    "@tilcai-wallet/domain": "workspace:*",
     "zod": "catalog:"
   }
 }

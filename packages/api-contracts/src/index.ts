@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export * from "./wallet-v1.js";
+
 export const healthPath = "/healthz";
 
 export const healthSchema = z.object({

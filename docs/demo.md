@@ -1,5 +1,7 @@
 # Demo en Stellar testnet
 
+[Contrato de API, fixtures y arranque local](demo-api.md)
+
 - [ ] Desplegar una subcuenta de prueba con autoridad recuperable del dueño.
 - [ ] Crear la tarjeta Codex · Portátil, fondear 20 USDC de prueba y confirmar el tope inicial de 0,50.
 - [ ] Pagar un informe de 0,50 por Soroban directo y abrir el mismo recibo desde web móvil y MCP.
