@@ -6,6 +6,8 @@
 
 **Estado** La base del monorepo incluye los canales, CI y pruebas de humo. La primera entrega integra web móvil y MCP con compra directa y recibo en **Stellar Testnet**. [Prioridades y dependencias](docs/roadmap.md) · [Checklist](#checklist-del-equipo)
 
+**Almacenamiento elegido** Supabase Postgres para sesiones, órdenes, intentos y recibos. Supabase Storage privado para los archivos que custodie la wallet. Stellar confirma saldos, gastos y políticas. La integración está pendiente. [Decisión y alcance](docs/adr/003-supabase-persistence.md)
+
 ---
 
 ## Empieza en 3 pasos
@@ -24,7 +26,7 @@ pnpm --filter @tilcai-wallet/api dev     # http://127.0.0.1:4000/healthz
 pnpm --filter @tilcai-wallet/web dev     # http://localhost:3000
 ```
 
-No necesitas un archivo `.env` para trabajar en local: cada variable tiene un valor por defecto. [`.env.example`](.env.example) muestra cuáles existen.
+La base actual arranca en local con los valores de ejemplo. La primera compra integrada incorporará Postgres y variables de servicio por entorno. [`.env.example`](.env.example) documenta las variables disponibles hoy.
 
 ---
 
@@ -40,9 +42,12 @@ flowchart LR
   C --> SDK
   SDK --> API[API]
   API --> D[domain]
+  API --> PG[(Supabase Postgres)]
+  API --> Storage[Supabase Storage privado]
   D --> AD[tilcai-adapter]
   AD --> ST[(Stellar / Soroban)]
   WK[Worker] --> ST
+  WK --> PG
 ```
 
 **Regla de oro:** los clientes solo hablan con la API a través de `wallet-sdk`. Nunca importan firmantes, credenciales ni acceso directo a datos. Más detalle en [Arquitectura](docs/architecture.md).
@@ -130,13 +135,14 @@ El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega.
 </details>
 
 <details>
-<summary><b>1. Autoridad, API y estado</b> · 0/6</summary>
+<summary><b>1. Autoridad, API y persistencia</b> · 0/7</summary>
 
 - [ ] Modelar usuarios, tenants, sesiones lógicas, credenciales, tarjetas, políticas y recuperaciones.
 - [ ] Implementar alta, respaldo, WebAuthn, scopes, cierre y rotación.
 - [ ] Implementar intención de vínculo y fondeo con enlace de uso único.
-- [ ] Persistir órdenes, intentos, idempotencia, retenciones y outbox.
-- [ ] Versionar contratos de API, permitir consultas por alcance y proyectar el estado confirmado.
+- [ ] Preparar Supabase Postgres para local y Testnet con migraciones, roles mínimos y RLS en tablas de tenant.
+- [ ] Persistir órdenes, intentos, idempotencia, retenciones, outbox e inbox. Probar la contención de API y worker.
+- [ ] Versionar OpenAPI y esquemas, autorizar por objeto y proyectar el estado confirmado.
 - [ ] Aislar el firmante delegado y medir despliegue y restauración de subcuentas.
 
 </details>
@@ -146,10 +152,10 @@ El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega.
 
 - [ ] Confirmar la cuenta de contrato, factory, activo de prueba y proveedor.
 - [ ] Limitar activo, destino, monto, vigencia y gasto acumulado. Probar el rechazo directo en Soroban.
-- [ ] Implementar cotización, simulación, firma aislada, envío y conciliación por hash.
+- [ ] Implementar cotización, simulación de registro, firma aislada, simulación de verificación final, envío y conciliación por hash.
 - [ ] Conservar el pedido ante resultado incierto, cotización vencida o rechazo de presupuesto.
 - [ ] Registrar evidencia autenticada de entrega y emitir un recibo con ID estable.
-- [ ] Reconciliar eventos, cursor, entrega tardía, duplicados y costo de las transacciones.
+- [ ] Reconciliar eventos, cursor, entrega tardía, duplicados y costo. Probar reinicios antes y después del envío.
 
 </details>
 
@@ -183,7 +189,7 @@ El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega.
 - [ ] Probar límites, revocación, resultados ambiguos, protección contra duplicados y retorno de fondos.
 - [ ] Evaluar x402 y MPP con la smart account y capacidades de fondeo mediante rutas validadas.
 - [ ] Medir costo, tiempo de conciliación, disponibilidad y disposición a pagar con agencias y freelancers.
-- [ ] Registrar demo, hashes, resultados y estado por canal antes de publicar la postulación.
+- [ ] Registrar demo, hashes, resultados y estado por canal. Probar restauración, custodia y operación antes de usar fondos reales.
 
 </details>
 
@@ -210,8 +216,10 @@ El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega.
 | Capas y límites de cada módulo | [Arquitectura](docs/architecture.md) |
 | Versiones y fuentes oficiales | [Stack](docs/stack.md) |
 | Órdenes, intentos y conciliación | [Persistencia](docs/persistence.md) |
+| Pruebas, evidencias y controles por fase | [Validación](docs/validation.md) |
 | Por qué bot y MCP propios | [ADR 001](docs/adr/001-owned-channels.md) |
 | Herramientas y riel de pago de la demo | [ADR 002](docs/adr/002-toolchain-and-demo.md) |
+| Postgres, Storage y fronteras de acceso | [ADR 003](docs/adr/003-supabase-persistence.md) |
 | Paso a paso de la demo | [Guion de demo](docs/demo.md) |
 | Autorización de gasto con ML-DSA y alcance de la prueba | [Investigación poscuántica](docs/research/post-quantum.md) |
 

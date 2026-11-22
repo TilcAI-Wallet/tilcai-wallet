@@ -10,4 +10,6 @@ En Stellar testnet, la tarjeta de Codex · Portátil recibe 25 USDC de prueba. C
 
 Las aplicaciones representan superficies del mismo producto. La primera entrega integrada recorre web móvil y MCP. Cada canal valida su identidad y el alcance de sus operaciones antes de activarse.
 
+El recibo atribuye la liquidación a Stellar y la evidencia de entrega al proveedor. Si TilcAI guarda el informe comprado, lo sirve desde almacenamiento privado tras verificar el acceso a la orden. [Validación](validation.md) · [Almacenamiento](persistence.md)
+
 La hoja de ruta incluye una tarjeta experimental que verifica autorización de gasto con ML-DSA en Stellar Testnet. La investigación está en curso. El recibo mostrará esta evidencia cuando pueda conciliarse con un pago confirmado y la regla de la subcuenta. [Investigación y alcance](research/post-quantum.md) · [Prioridades](roadmap.md)
