@@ -58,6 +58,7 @@ export function AgentCreditCard({ agent, status }: { agent: Agent; status: Agent
         className="pointer-events-none absolute inset-0"
         style={{ background: "linear-gradient(115deg, transparent 38%, rgba(255,255,255,.14) 50%, transparent 62%)" }}
       />
+      <span aria-hidden="true" className="card-sheen pointer-events-none absolute inset-0" style={{ background: "linear-gradient(105deg, transparent 40%, rgba(255,255,255,.34) 50%, transparent 60%)" }} />
       <span aria-hidden="true" className="pointer-events-none absolute -right-6 -bottom-10 opacity-[0.13]">
         <Logo size={190} color="bg-current" />
       </span>

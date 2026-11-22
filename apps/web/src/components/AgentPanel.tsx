@@ -48,8 +48,8 @@ export function AgentPanel({ data, openHref }: { data: AgentData; openHref?: str
               className="flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-ivory/30 py-1 pr-1 pl-3 text-sm"
             >
               {show ? "Ocultar" : "Mostrar"}
-              <span className={`flex h-6 w-10 items-center rounded-full p-0.5 ${show ? "justify-end bg-accent" : "justify-start bg-ivory/25"}`}>
-                <span className={`size-5 rounded-full ${show ? "bg-ink" : "bg-ivory"}`} />
+              <span className={`flex h-6 w-10 items-center rounded-full p-0.5 transition-colors duration-200 ${show ? "bg-accent" : "bg-ivory/25"}`}>
+                <span className={`size-5 rounded-full transition-[transform,background-color] duration-200 ease-(--ease-out) ${show ? "translate-x-4 bg-ink" : "bg-ivory"}`} />
               </span>
             </button>
           )}
@@ -62,7 +62,7 @@ export function AgentPanel({ data, openHref }: { data: AgentData; openHref?: str
           aria-valuenow={percent}
           className="h-2.5 overflow-hidden rounded-full bg-ivory/15"
         >
-          <div className={`h-full rounded-full ${status === "active" ? "bg-mint" : "bg-accent"}`} style={{ width: `${percent}%` }} />
+          <div className={`bar-grow h-full rounded-full ${status === "active" ? "bg-mint" : "bg-accent"}`} style={{ width: `${percent}%` }} />
         </div>
         <dl className="divide-y divide-ivory/15">
           {rows.map(([label, value]) => (

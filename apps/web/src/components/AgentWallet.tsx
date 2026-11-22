@@ -29,11 +29,12 @@ export function AgentWallet({ items }: { items: AgentData[] }) {
             return (
               <div
                 key={id}
-                className="absolute inset-x-0 transition-[top] duration-300 ease-out motion-reduce:transition-none"
+                className="absolute inset-x-0 transition-[top] duration-[340ms] ease-(--ease-drawer) motion-reduce:transition-none"
                 style={{ top: index * peek, zIndex: index }}
               >
+                <div className="card-deal" style={{ animationDelay: `${index * 60}ms` }}>
                 {isFront ? (
-                  <Link href={`/wallet/agents/${id}`} aria-label={`Abrir la tarjeta de ${data.agent.name}`} className="block rounded-[1.6rem] active:scale-[0.99]">
+                  <Link href={`/wallet/agents/${id}`} aria-label={`Abrir la tarjeta de ${data.agent.name}`} className="block rounded-[1.6rem] active:scale-[0.985]">
                     {card}
                   </Link>
                 ) : (
@@ -41,6 +42,7 @@ export function AgentWallet({ items }: { items: AgentData[] }) {
                     {card}
                   </button>
                 )}
+                </div>
               </div>
             );
           })}
@@ -58,14 +60,16 @@ export function AgentWallet({ items }: { items: AgentData[] }) {
               aria-current={index === position ? "true" : undefined}
               className="flex size-6 items-center justify-center"
             >
-              <span className={`h-2 rounded-full transition-all motion-reduce:transition-none ${index === position ? "w-6 bg-accent" : "w-2 bg-ivory/30"}`} />
+              <span className={`h-2 rounded-full transition-[width,background-color] duration-300 ease-(--ease-out) motion-reduce:transition-none ${index === position ? "w-6 bg-accent" : "w-2 bg-ivory/30"}`} />
             </button>
           ))}
         </div>
       )}
 
       {/* `key` reinicia «Mostrar» al cambiar de tarjeta. */}
-      <AgentPanel key={frontId} data={front} openHref={`/wallet/agents/${frontId}`} />
+      <div className="swap flex flex-col gap-5">
+        <AgentPanel key={frontId} data={front} openHref={`/wallet/agents/${frontId}`} />
+      </div>
     </>
   );
 }
