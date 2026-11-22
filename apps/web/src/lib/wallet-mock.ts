@@ -2,6 +2,8 @@
 // Las formas (Session, Card, Receipt) son las que pedirá la API: al integrarla, solo cambia `wallet.ts`.
 // Importes en unidades atómicas (7 decimales, como Stellar), siempre como cadena.
 
+import type { Activity } from "./ledger.ts";
+
 export type CardState = "draft" | "active" | "freeze_pending" | "frozen" | "revocation_pending" | "revoked";
 export type OrderState = "awaiting_budget" | "payment_pending" | "paid" | "delivered" | "failed";
 
@@ -20,7 +22,7 @@ export type Card = {
   spent: string;
   /** Capacidad de gasto restante del agente (tope menos gastado). */
   available: string;
-  activity: { id: string; kind: "funding" | "payment"; label: string; amount: string; at: string; receiptId: string | null }[];
+  activity: Activity[];
   simulated: boolean;
 };
 
@@ -74,6 +76,8 @@ const funding = {
   amount: usdc("20"),
   at: "2026-11-21T20:00:00.000Z",
   receiptId: null,
+  txHash: null,
+  counterparty: "Faucet de Testnet",
 } as const;
 
 const cardBase = {
@@ -109,6 +113,8 @@ export const demoCardAfter: Card = {
       amount: usdc("0.50"),
       at: "2026-11-21T20:05:00.000Z",
       receiptId: demoReceiptIds.paid,
+      txHash: null,
+      counterparty: "Codex · Portátil",
     },
     funding,
   ],
