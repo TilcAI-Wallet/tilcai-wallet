@@ -30,3 +30,30 @@ Una observación RPC `SUCCESS` por sí sola no verifica transferencia; `NOT_FOUN
 un timeout no autorizan un nuevo intento ni la liberación de la retención. Las
 pruebas unitarias usan claves efímeras y RPC inyectado; no acreditan una transacción
 Testnet ni la seguridad integral de custodia.
+
+## Riesgo pendiente de destinatario
+
+`spend(amount)` no incluye el destinatario como argumento firmado y el dueño puede
+cambiarlo con `set_policy`. Una consulta fresca antes de enviar no impide un cambio
+entre la consulta y la inclusión en ledger. No activar el gate de difusión hasta que
+el equipo demuestre una mitigación que vincule la autorización al destinatario o
+controle de forma verificable la autoridad de política durante esa ventana.
+El verificador de eventos detectaría el desvío después de la ejecución; no lo evita.
+
+## Matriz de avance
+
+| Caso | Estado |
+| --- | --- |
+| Preflight y firma con RPC y llaves efímeras simuladas | PASS local |
+| XDR cifrado y lease en PostgreSQL 17 | PASS en CI previo; repetir con migración 006 |
+| Verificación XDR y evento SEP-41 con datos simulados | PASS local |
+| Timeout/NOT_FOUND y reenvío del mismo XDR | PASS unitario con transporte simulado; integración PostgreSQL pendiente de CI |
+| Proceso ejecutable `WORKER_MODE=testnet` y API Testnet | NOT RUN: aún no implementados |
+| Confirmación y contabilidad persistidas, proveedor y recibo real | NOT RUN: aún no implementados |
+| RPC real, instancia fondeada y primer broadcast | BLOCKED: faltan infraestructura, secretos seguros y autorización expresa |
+| PWA de extremo a extremo contra el backend real | NOT RUN |
+
+`broadcastStoredTestnet` es una función aislada con gate explícito desactivado por
+defecto; no está conectada al worker. Incluso si la verificación de política fresca
+pasa, el riesgo de cambio de destinatario descrito arriba sigue abierto. No usarla
+para transmitir hasta resolver ese riesgo y recibir autorización humana.

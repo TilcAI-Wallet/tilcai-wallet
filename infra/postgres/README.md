@@ -34,3 +34,7 @@ worker accede solo mediante las funciones. La clave AEAD nunca se almacena en la
 base. `wallet.tenant_id` por sí solo no autentica: la conexión y el código del
 servicio siguen formando parte de la frontera de confianza. La API aún no habilita
 órdenes Testnet y no existe un mecanismo de difusión.
+
+La migración 006 añade lectura del intento y transición a `uncertain` para un login
+worker asignado que posea un lease vigente. La operación conserva la retención y no
+confirma pagos. La confirmación financiera y la entrega real aún no están conectadas.

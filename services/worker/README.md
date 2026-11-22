@@ -36,7 +36,21 @@ XDR. Esta ruta es una biblioteca aislada: **no está conectada al worker ejecuta
 `observeTestnetHash` consulta RPC, conserva `NOT_FOUND` y timeout como inciertos y
 no considera `SUCCESS` evidencia suficiente de pago.
 
-No existe implementación de envío, ni verificador de eventos de transferencia, ni
+No existe un proceso ejecutable que coordine el envío y la conciliación, ni
 proveedor real de entrega. Las tarjetas `testnet` no están habilitadas en la API;
 no ejecutar contra fondos ni configurar un piloto con estas piezas. Ver
 [preflight y límites](../../docs/testnet-preflight.md).
+
+La biblioteca `testnet-broadcast.ts` puede invocar un RPC inyectado solo con gate
+explícito y recuperación cifrada, lease y verificación de política. **No está
+conectada al proceso ejecutable ni autorizada para uso real**. Una comprobación de
+política antes de enviar no elimina el riesgo de que el dueño cambie `recipient`
+con `set_policy` antes de la inclusión: `spend(amount)` no fija el destinatario en
+la operación firmada. Este riesgo sigue abierto y debe resolverse antes de activar
+transmisiones. Las pruebas pasan un transporte falso y no acceden a una red.
+
+`testnet-controlled.ts` conecta preflight/vault, lease y `uncertain` exclusivamente
+con `SimulatedTransport`, que no tiene capacidad de red. Las observaciones de ese
+transporte no se guardan como evidencia Testnet. El verificador SEP-41 comprueba
+el sobre exacto y el evento de transferencia, suponiendo un RPC confiable; aún no
+se ha conectado a una transición de pago confirmado ni al proveedor de entrega.

@@ -20,7 +20,7 @@ function associatedData(context: EnvelopeContext): Buffer {
     throw new Error("invalid envelope context");
   return Buffer.from(JSON.stringify(["tilcai-envelope-v1",Networks.TESTNET,context.keyId,context.tenantId,context.orderId,context.attemptId,context.contractId,context.agent,context.transactionHash,context.validThroughLedger]),"utf8");
 }
-function verifyXdr(envelope: Buffer, context: EnvelopeContext): Buffer {
+export function verifySignedSpendEnvelope(envelope: Buffer, context: EnvelopeContext): Buffer {
   if (envelope.length < 1 || envelope.length > 1048576) throw new Error("invalid envelope length");
   let transaction: ReturnType<typeof TransactionBuilder.fromXDR>;
   try { transaction = TransactionBuilder.fromXDR(envelope.toString("base64"), Networks.TESTNET); }
@@ -46,7 +46,7 @@ function verifyXdr(envelope: Buffer, context: EnvelopeContext): Buffer {
 export function sealEnvelope(key: Buffer, context: EnvelopeContext, envelope: Buffer): EncryptedEnvelope {
   if (key.length !== 32) throw new Error("envelope key must be 32 bytes");
   const aad = associatedData(context);
-  const xdrDigest = verifyXdr(envelope, context);
+  const xdrDigest = verifySignedSpendEnvelope(envelope, context);
   const nonce = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm",key,nonce);
   cipher.setAAD(aad);
@@ -62,7 +62,7 @@ export function openEnvelope(key: Buffer, context: EnvelopeContext, sealed: Encr
     decipher.setAAD(aad); decipher.setAuthTag(sealed.tag);
     plaintext = Buffer.concat([decipher.update(sealed.ciphertext),decipher.final()]);
   } catch { throw new Error("encrypted envelope authentication failed"); }
-  const digest = verifyXdr(plaintext,context);
+  const digest = verifySignedSpendEnvelope(plaintext,context);
   if (!timingSafeEqual(digest,sealed.xdrDigest)) throw new Error("envelope digest mismatch");
   return plaintext;
 }
