@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { getPrefs, prefsCookie, requireSession, sessionCookie, type Method, type Prefs } from "@/lib/auth";
-import { fund, LedgerError, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
+import { configureAgentCard, connectAgent, fund, LedgerError, resolveRequest, setAgentPaused, setCodexSession, transfer } from "@/lib/ledger";
 import { parseUsdc } from "@/lib/money";
 import { demoAddress, isStellarAddress } from "@/lib/stellar";
 import { parseUsername } from "@/lib/username";
@@ -55,6 +55,19 @@ export async function sendTransfer(to: string, amountText: string): Promise<Resu
     const amount = parseUsdc(amountText);
     if (!amount) return { ok: false, error: "Escribe un monto válido, por ejemplo 10 o 10,50." };
     return { ok: true, id: transfer(store(), destination, BigInt(amount), new Date()) };
+  });
+}
+
+export async function connectAgentAction(client: string, alias: string): Promise<Result> {
+  return guard(() => ({ ok: true, id: connectAgent(store(), client, alias, new Date()) }));
+}
+
+export async function configureAgentCardAction(agentId: string, limitText: string, maxText: string): Promise<Result> {
+  return guard(() => {
+    const limit = parseUsdc(limitText);
+    const max = parseUsdc(maxText);
+    if (!limit || !max) return { ok: false, error: "Escribe montos válidos, por ejemplo 50 o 10,50." };
+    configureAgentCard(store(), agentId, BigInt(limit), BigInt(max), new Date());
   });
 }
 
