@@ -1,0 +1,174 @@
+.section {
+  --pilot-ink: #0b0b0d;
+  --pilot-paper: #f8f6ee;
+  --pilot-lilac: #c8a6ff;
+  --pilot-accent: #6b3fa0;
+  --pilot-muted: #544460;
+  --pilot-rule: #d7c6e4;
+  background: var(--pilot-paper);
+  color: var(--pilot-ink);
+  padding-block: clamp(3.5rem, 9vw, 7rem);
+}
+
+.inner {
+  width: min(100% - 3rem, 76rem);
+  margin-inline: auto;
+}
+
+.heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .45rem 1rem;
+  border-bottom: 1px solid var(--pilot-rule);
+  padding-bottom: .7rem;
+  margin-bottom: clamp(2rem, 5vw, 3.5rem);
+}
+
+.heading h2 {
+  font: 400 clamp(1.95rem, 5vw, 4.1rem)/1.02 Bargain, var(--font-schibsted), system-ui, sans-serif;
+  letter-spacing: -.04em;
+}
+
+.heading span {
+  color: var(--pilot-muted);
+  font-size: .77rem;
+  font-weight: 600;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr);
+  align-items: start;
+  gap: clamp(2.5rem, 6vw, 5rem);
+}
+
+.lead {
+  max-width: 30ch;
+  font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+  font-weight: 650;
+  letter-spacing: -.025em;
+  line-height: 1.18;
+  text-wrap: balance;
+}
+
+.copy h3 {
+  margin-top: 2rem;
+  color: var(--pilot-accent);
+  font-size: .95rem;
+  font-weight: 700;
+}
+
+.fit {
+  display: grid;
+  gap: .55rem;
+  margin-top: .7rem;
+}
+
+.fit li {
+  position: relative;
+  max-width: 48ch;
+  padding-left: 1.5rem;
+  line-height: 1.45;
+}
+
+.fit li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: .5em;
+  width: .6rem;
+  height: .6rem;
+  border-radius: 100vmax;
+  background: var(--pilot-lilac);
+}
+
+.terms {
+  max-width: 48ch;
+  margin-top: 1.6rem;
+  color: var(--pilot-muted);
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  margin-top: 2rem;
+}
+
+.actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  padding: .55rem 1.1rem;
+  border-radius: 100vmax;
+  font-weight: 650;
+}
+
+.actions a:first-child { background: var(--pilot-ink); color: var(--pilot-paper); }
+.actions a:last-child { color: var(--pilot-accent); }
+.actions a:hover { text-decoration: underline; text-underline-offset: .2em; }
+
+/* The price is the one dark object on the ivory page, echoing the agent card. */
+.pricing {
+  padding: clamp(1.6rem, 3.5vw, 2.4rem);
+  border-radius: 1.5rem;
+  background: var(--pilot-ink);
+  color: var(--pilot-paper);
+}
+
+.pricing h3 {
+  font: 400 clamp(1.5rem, 3vw, 2.1rem)/1.05 Bargain, var(--font-schibsted), system-ui, sans-serif;
+  letter-spacing: -.03em;
+}
+
+.tiers {
+  margin-top: 1.6rem;
+  border-top: 1px solid #3a3242;
+}
+
+.tiers div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .3rem 1rem;
+  padding-block: 1rem;
+  border-bottom: 1px solid #3a3242;
+}
+
+.tiers dt { color: #d8cfe0; }
+.tiers dd { color: #d8cfe0; }
+
+.tiers strong {
+  color: var(--pilot-lilac);
+  font: 400 clamp(1.9rem, 4vw, 2.6rem)/1 Bargain, var(--font-schibsted), system-ui, sans-serif;
+  letter-spacing: -.03em;
+}
+
+.example {
+  margin-top: 1.3rem;
+  color: #a7f3d0;
+  font-weight: 650;
+}
+
+.note {
+  margin-top: .6rem;
+  color: #b9afc2;
+  font-size: .88rem;
+  line-height: 1.5;
+}
+
+.section a:focus-visible { outline-color: var(--pilot-accent); }
+.pricing a:focus-visible { outline-color: var(--pilot-lilac); }
+
+@media (max-width: 820px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 670px) {
+  .inner { width: calc(100% - 2rem); }
+}

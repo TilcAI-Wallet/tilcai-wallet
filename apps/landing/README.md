@@ -14,6 +14,8 @@ Los grabados de Claude Code, Codex, OpenCode y Grok Bot vienen de la sección St
 
 `#canales` reproduce nueve escenas con el mismo mecanismo de scroll. WhatsApp muestra el patrón de [respuestas rápidas de Meta](https://developers.facebook.com/documentation/business-messaging/whatsapp/messages/interactive-reply-buttons-messages) y Telegram el [menú inline de un bot](https://core.telegram.org/bots/api#inlinekeyboardmarkup). Las terminales muestran cómo instalar dependencias, registrar el [MCP del monorepo](../mcp/README.md) y consultar la tarjeta con `get_card`. El CLI muestra `health` y una vista previa TUI del saldo. Las escenas del navegador y celular reutilizan capturas de la PWA. Los símbolos de WhatsApp y Telegram proceden de [Simple Icons](https://github.com/simple-icons/simple-icons).
 
+`#piloto` vive en `src/app/pilot-section.tsx`: a quién busca el piloto, las condiciones y el precio previsto (primera tarjeta gratis y US$4 al mes por tarjeta activa adicional). Los botones abren la PWA y el repositorio.
+
 - [ ] Reemplazar el enlace del piloto por un formulario o correo del equipo.
 - [x] Mostrar las capturas de la PWA y el recorrido de compra de 5,00 USDC.
 - [ ] Elegir dominio y hosting.
