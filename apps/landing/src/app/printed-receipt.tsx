@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./landing-hero.module.css";
+import { demoPurchase } from "./story/demo-purchase";
 
-const amount = "5,00 USDC";
+const amount = demoPurchase.payment;
 const receiptDetails = [
-  ["Agente", "Codex · Portátil"],
-  ["Permiso", `Tope ${amount}`],
-  ["Orden", "Informe de mercado"],
+  ["Agente", demoPurchase.agent],
+  ["Permiso", `Tope ${demoPurchase.limit}`],
+  ["Orden", demoPurchase.order],
   ["Entrega", "Verificada"],
 ] as const;
 
@@ -85,7 +86,7 @@ export function PrintedReceipt() {
       <div className={styles.ticketWindow}>
         <article className={styles.ticket} id="recibo" ref={paper} aria-labelledby="receipt-title">
           <h2 id="receipt-title">Recibo de compra</h2>
-          <p className={styles.testNetwork}>Stellar Testnet · Ejemplo</p>
+          <p className={styles.testNetwork}>{demoPurchase.network} · Ejemplo</p>
           <dl className={styles.ticketItems}>
             {receiptDetails.map(([label, value]) => (
               <div className={styles.ticketRow} key={label}>
