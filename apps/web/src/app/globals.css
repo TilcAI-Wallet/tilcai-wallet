@@ -23,6 +23,25 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Rayas de asombro de la ilustración: destellan en cadena desde la wallet. */
+@keyframes spark {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+.spark {
+  transform-box: fill-box;
+  transform-origin: 0% 50%;
+  animation: spark 2.4s ease-in-out infinite;
+}
+
 @keyframes sheet-in {
   from {
     transform: translateY(100%);
@@ -35,6 +54,10 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .install-sheet {
+    animation: none;
+  }
+
+  .spark {
     animation: none;
   }
 }
