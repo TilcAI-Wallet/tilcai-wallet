@@ -53,9 +53,13 @@ Integración en el backend:
 - Si la política cambia entre la firma y la ejecución, la transacción se revierte en red. El worker no
   la confirma, no crea otro intento ni libera la retención automáticamente.
 
-El gate de difusión sigue cerrado en código (`parseWorkerConfig` rechaza `TESTNET_BROADCAST` distinto
-de `disabled` y el bucle solo recibe un RPC de lectura). Activarlo requiere la revisión de
-`broadcastStoredTestnet` con la interfaz v2, infraestructura dedicada y autorización humana expresa.
+La difusión está deshabilitada por defecto. `broadcastAuthorizedTestnet` (migración 010) solo envía con tres
+factores: `TESTNET_BROADCAST=single-authorized`, `TESTNET_BROADCAST_ORDER_ID` y una autorización humana
+en `broadcast_authorizations` ligada al hash exacto del sobre, con caducidad y como máximo 3 reenvíos.
+Antes de enviar verifica los bytes firmados, la red, los ledgers y el tiempo restantes, la secuencia del
+agente y el estado v2 del contrato (revisión, destinatario, agente, activo, límites y saldo). Persiste
+`uncertain` antes del envío y concilia por el mismo hash. Solo se ha probado con RPC falso.
+Procedimiento: [runbook de la primera compra](testnet-runbook.md).
 
 ## Matriz de avance
 
@@ -68,10 +72,9 @@ de `disabled` y el bucle solo recibe un RPC de lectura). Activarlo requiere la r
 | Proceso ejecutable `WORKER_MODE=testnet` (sin difusión) y API Testnet | Implementado; integración PostgreSQL en CI (`testnet-db.test.ts`) |
 | Confirmación con evidencia verificada (migración 007), `demo-report-provider` y recibo API/MCP/PWA | Implementado con RPC simulado; integración PostgreSQL en CI |
 | Interfaz WalletFoundation v2 en preflight, firma, sobre y conciliación | Implementada; pruebas unitarias y PostgreSQL 17 en CI |
-| Confirmación con una transacción Testnet real | BLOCKED: difusión deshabilitada; requiere activación revisada y autorización |
+| Envío autorizado de una sola orden (migración 010) con RPC falso: fencing, reintentos, expiración, cambios de política y concurrencia | Implementado; pruebas unitarias y PostgreSQL 17 en CI |
+| Confirmación con una transacción Testnet real | NOT RUN: requiere infraestructura, instancia v2 fondeada y autorización humana ([runbook](testnet-runbook.md)) |
 | RPC real, instancia fondeada y primer broadcast | BLOCKED: faltan infraestructura, secretos seguros y autorización expresa |
 | PWA de extremo a extremo contra el backend real | NOT RUN |
 
-`broadcastStoredTestnet` es una función aislada con gate explícito desactivado por
-defecto; no está conectada al worker. No usarla para transmitir sin revisión de la
-activación y autorización humana expresa.
+Ninguna prueba transmite: los envíos usan un RPC falso que solo registra los bytes.

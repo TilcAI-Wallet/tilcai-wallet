@@ -52,7 +52,7 @@ test("v2 preflight signs exactly spend(amount, recipient, expected_policy_revisi
     const result=await prepareTestnetDryRun(s.server,s.agentSigner,s.contract,revision);
     assert.deepEqual(s.calls,["version","policy_state","balance","spend"]);
     assert.equal(result.policyRevision,revision);
-    assert.equal(result.validThroughLedger,120);
+    assert.equal(result.validThroughLedger,220);
     const decoded=TransactionBuilder.fromXDR(result.envelope.toString("base64"),Networks.TESTNET);
     assert.equal(Buffer.from(decoded.hash()).toString("hex"),result.hash);
     assert.equal(decoded.signatures.length,1);

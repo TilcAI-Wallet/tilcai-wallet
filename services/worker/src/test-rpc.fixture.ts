@@ -1,4 +1,5 @@
-import { Address, Networks, StrKey, TransactionBuilder, nativeToScVal, rpc, xdr } from "@stellar/stellar-sdk";
+import { Account, Address, Networks, SorobanDataBuilder, StrKey, TransactionBuilder, nativeToScVal, rpc, xdr } from "@stellar/stellar-sdk";
+import type { SendRpc } from "./testnet-broadcast.js";
 import type { TestnetReadRpc } from "./testnet-worker.js";
 import { testReportRecipient, testnetUsdcContract } from "./testnet-constants.js";
 
@@ -36,4 +37,47 @@ export function simulatedReadRpc(sample: { bytes: Buffer; hash: string; contract
     },
   };
   return server as unknown as TestnetReadRpc & { lookups: number };
+}
+
+/** Mutable state of a FAKE Testnet: no network access; sendTransaction only records the bytes. */
+export interface FakeChain {
+  network: string; latestLedger: number; accountSequence: string; version: number; revision: bigint; balance: bigint;
+  policy: { agent: string; asset: string; recipient: string; frozen: boolean; max_per_payment: bigint; limit: bigint; spent: bigint };
+  transaction: "not_found" | "verified" | "failed" | "timeout";
+  send: "pending" | "duplicate" | "error" | "timeout";
+  inclusionLedger: number;
+}
+export function fakeTestnetRpc(sample: { bytes: Buffer; hash: string; contractId: string; agent: string; policyRevision: bigint }, overrides: Partial<FakeChain> = {}) {
+  const chain: FakeChain = { network: Networks.TESTNET, latestLedger: 105, accountSequence: "1", version: 2, revision: sample.policyRevision, balance: 200_000_000n,
+    policy: { agent: sample.agent, asset: testnetUsdcContract, recipient: testReportRecipient, frozen: false, max_per_payment: 5_000_000n, limit: 5_000_000n, spent: 0n },
+    transaction: "not_found", send: "pending", inclusionLedger: 110, ...overrides };
+  const sent: Buffer[] = [], counters = { lookups: 0 };
+  const envelopeXdr = () => TransactionBuilder.fromXDR(sample.bytes.toString("base64"), Networks.TESTNET).toEnvelope();
+  const simulation = (retval: xdr.ScVal) => ({ id: "fake", latestLedger: chain.latestLedger, events: [], _parsed: true,
+    transactionData: new SorobanDataBuilder().setResourceFee("1000"), minResourceFee: "1000", result: { retval, auth: [] } });
+  const server = {
+    getNetwork: async () => ({ passphrase: chain.network, protocolVersion: 23 }),
+    getLatestLedger: async () => ({ sequence: chain.latestLedger }),
+    getAccount: async (id: string) => new Account(id, chain.accountSequence),
+    simulateTransaction: async (tx: { operations: unknown[] }) => {
+      const name = (tx.operations[0] as { func: { invokeContract: { functionName: { toString(): string } } } }).func.invokeContract.functionName.toString();
+      if (name === "version") return simulation(nativeToScVal(chain.version, { type: "u32" }));
+      if (name === "policy_state") return simulation(xdr.ScVal.scvVec([nativeToScVal(chain.policy, { type: { max_per_payment: ["symbol", "i128"], limit: ["symbol", "i128"], spent: ["symbol", "i128"] } }), nativeToScVal(chain.revision, { type: "u64" })]));
+      if (name === "balance") return simulation(nativeToScVal(chain.balance, { type: "i128" }));
+      throw new Error(`FAKE RPC: unexpected simulation ${name}`);
+    },
+    getTransaction: async () => {
+      counters.lookups++;
+      if (chain.transaction === "timeout") throw new Error("FAKE timeout");
+      if (chain.transaction === "not_found") return { status: rpc.Api.GetTransactionStatus.NOT_FOUND, txHash: sample.hash };
+      if (chain.transaction === "failed") return { status: rpc.Api.GetTransactionStatus.FAILED, txHash: sample.hash, ledger: chain.inclusionLedger, envelopeXdr: envelopeXdr(), events: { contractEventsXdr: [[]] } };
+      return { status: rpc.Api.GetTransactionStatus.SUCCESS, txHash: sample.hash, ledger: chain.inclusionLedger, envelopeXdr: envelopeXdr(), events: { contractEventsXdr: [[transferEvent(sample.contractId)]] } };
+    },
+    sendTransaction: async (tx: { toEnvelope(): { toXDR(): Uint8Array } }) => {
+      sent.push(Buffer.from(tx.toEnvelope().toXDR()));
+      if (chain.send === "timeout") throw new Error("FAKE send timeout");
+      return { status: chain.send === "duplicate" ? "DUPLICATE" : chain.send === "error" ? "ERROR" : "PENDING", hash: sample.hash, latestLedger: chain.latestLedger, latestLedgerCloseTime: 0 };
+    },
+  };
+  return { chain, sent, get lookups() { return counters.lookups; }, read: server as unknown as TestnetReadRpc, send: server as unknown as SendRpc };
 }

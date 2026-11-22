@@ -56,6 +56,14 @@ test("worker configuration refuses broadcast and incomplete Testnet settings", (
   assert.throws(() => parseWorkerConfig({ WORKER_MODE: "testnet", STELLAR_RPC_URL: "https://user:pw@rpc.example" }), /HTTPS/);
   assert.throws(() => parseWorkerConfig({ WORKER_MODE: "testnet", STELLAR_RPC_URL: "https://rpc.example" }), /ENVELOPE_KEY/);
   assert.equal(parseWorkerConfig({ WORKER_MODE: "testnet", STELLAR_RPC_URL: "https://rpc.example", ENVELOPE_KEY_ID: "k1", ENVELOPE_KEY_FILE: "/run/secrets/key", TESTNET_BROADCAST: "disabled" }).WORKER_MODE, "testnet");
+  // Explicit single-order activation: exact mode, Testnet mode and one valid order id, nothing else.
+  const testnet = { WORKER_MODE: "testnet", STELLAR_RPC_URL: "https://rpc.example", ENVELOPE_KEY_ID: "k1", ENVELOPE_KEY_FILE: "/run/secrets/key" };
+  for (const value of ["true", "1", "enabled", "SINGLE-AUTHORIZED", "single-authorized "]) assert.throws(() => parseWorkerConfig({ ...testnet, TESTNET_BROADCAST: value, TESTNET_BROADCAST_ORDER_ID: "order-1" }), /Broadcast gate closed/);
+  assert.throws(() => parseWorkerConfig({ ...testnet, TESTNET_BROADCAST: "single-authorized" }), /TESTNET_BROADCAST_ORDER_ID/);
+  assert.throws(() => parseWorkerConfig({ ...testnet, TESTNET_BROADCAST: "single-authorized", TESTNET_BROADCAST_ORDER_ID: "a,b" }), /TESTNET_BROADCAST_ORDER_ID/);
+  assert.throws(() => parseWorkerConfig({ WORKER_MODE: "fixture", TESTNET_BROADCAST: "single-authorized", TESTNET_BROADCAST_ORDER_ID: "order-1" }), /WORKER_MODE=testnet/);
+  assert.throws(() => parseWorkerConfig({ ...testnet, TESTNET_BROADCAST_ORDER_ID: "order-1" }), /only valid with single-authorized/);
+  assert.equal(parseWorkerConfig({ ...testnet, TESTNET_BROADCAST: "single-authorized", TESTNET_BROADCAST_ORDER_ID: "order-1" }).TESTNET_BROADCAST_ORDER_ID, "order-1");
   assert.equal(decodeEnvelopeKey(Buffer.alloc(32, 7).toString("base64")).length, 32);
   assert.throws(() => decodeEnvelopeKey(Buffer.alloc(16).toString("base64")));
 });

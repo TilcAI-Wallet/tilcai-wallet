@@ -1,6 +1,7 @@
-import { Account, Address, Contract, Keypair, Networks, TransactionBuilder, nativeToScVal, rpc, scValToNative } from "@stellar/stellar-sdk";
-import { assertPaymentPolicy, type PaymentPolicy } from "./payment-safety.js";
-import { assertPolicyRevision, isExpectedSpendCall, walletFoundationVersion } from "./spend-interface.js";
+import { Address, Contract, Keypair, Networks, nativeToScVal, rpc } from "@stellar/stellar-sdk";
+import { assertPaymentPolicy } from "./payment-safety.js";
+import { assertPolicyRevision, isExpectedSpendCall } from "./spend-interface.js";
+import { envelopeValidityLedgers, foundationReader } from "./wallet-foundation-state.js";
 import { testReportAmount, testReportRecipient, testnetUsdcContract } from "./testnet-constants.js";
 
 const exhaustedDemo = "CDCSGJZCHL5SOYURXLZ6YZQGWIOFN3FDREKJ27LGPPPCFJRIPPLIVLT6";
@@ -19,32 +20,15 @@ export async function prepareTestnetDryRun(server: ReadRpc, signer: AgentSigner,
   const network = await server.getNetwork();
   if (network.passphrase !== Networks.TESTNET) throw new Error("network mismatch");
   const latest = (await server.getLatestLedger()).sequence;
-  if (!Number.isSafeInteger(latest) || latest < 1 || latest > 0xffffffff - 20) throw new Error("invalid ledger");
-  const validThroughLedger = latest + 20;
+  if (!Number.isSafeInteger(latest) || latest < 1 || latest > 0xffffffff - envelopeValidityLedgers) throw new Error("invalid ledger");
+  const validThroughLedger = latest + envelopeValidityLedgers;
   const source = await server.getAccount(signer.publicKey);
   if (source.accountId() !== signer.publicKey) throw new Error("source account mismatch");
-  const build = (operation: ReturnType<Contract["call"]>) => new TransactionBuilder(new Account(signer.publicKey,source.sequenceNumber()),{fee:"100",networkPassphrase:Networks.TESTNET})
-    .addOperation(operation).setTimeout(120).setLedgerbounds(latest,validThroughLedger).build();
-  async function simulate(tx: ReturnType<typeof build>) {
-    const sim = await server.simulateTransaction(tx);
-    if (!rpc.Api.isSimulationSuccess(sim) || rpc.Api.isSimulationRestore(sim) || !sim.result || sim.latestLedger < latest || sim.latestLedger > latest + 5) throw new Error("simulation unavailable or stale");
-    return sim;
-  }
-  // v1 contracts expose spend(amount) without recipient or revision binding and are rejected.
-  const version = scValToNative((await simulate(build(contract.call("version")))).result!.retval);
-  if (version !== walletFoundationVersion) throw new Error("unsupported WalletFoundation version: v2 required");
-  // policy_state returns policy and revision from one invocation, so they are consistent.
-  const state = scValToNative((await simulate(build(contract.call("policy_state")))).result!.retval) as unknown;
-  if (!Array.isArray(state) || state.length !== 2) throw new Error("invalid on-chain policy state");
-  const raw = state[0] as Record<string, unknown>, revision = state[1] as unknown;
-  if (typeof raw !== "object" || raw === null || typeof raw.agent !== "string" || typeof raw.asset !== "string" || typeof raw.recipient !== "string" || typeof raw.frozen !== "boolean" || typeof raw.max_per_payment !== "bigint" || typeof raw.limit !== "bigint" || typeof raw.spent !== "bigint") throw new Error("invalid on-chain policy");
-  assertPolicyRevision(revision);
+  const { build, simulate, readState } = foundationReader(server, { accountId: signer.publicKey, sequence: source.sequenceNumber() }, latest, validThroughLedger);
+  const { policy, revision, balance } = await readState(contractId);
   if (revision !== expectedPolicyRevision) throw new Error("policy revision differs from the reviewed revision");
-  const policy: PaymentPolicy = {contract:contractId,agent:raw.agent,asset:raw.asset,recipient:raw.recipient,frozen:raw.frozen,maxPerPayment:raw.max_per_payment,limit:raw.limit,spent:raw.spent};
   assertPaymentPolicy(policy,{contract:contractId,agent:signer.publicKey,asset:testnetUsdcContract,recipient:testReportRecipient,amount:testReportAmount});
-  const balanceResult = await simulate(build(new Contract(testnetUsdcContract).call("balance",new Address(contractId).toScVal())));
-  const balance = scValToNative(balanceResult.result!.retval);
-  if (typeof balance !== "bigint" || balance < testReportAmount) throw new Error("insufficient on-chain balance");
+  if (balance < testReportAmount) throw new Error("insufficient on-chain balance");
   const rawTx = build(contract.call("spend",nativeToScVal(testReportAmount,{type:"i128"}),new Address(testReportRecipient).toScVal(),nativeToScVal(revision,{type:"u64"})));
   // A policy change after policy_state makes this simulation fail with PolicyChanged.
   const simulation = await simulate(rawTx);

@@ -53,6 +53,16 @@ DO $$ BEGIN
      has_function_privilege('wallet_api','wallet_private.store_testnet_envelope(text,text,text,text,text,text,text,text,bigint,text,bytea,bytea,bytea,bytea,bigint)','EXECUTE') THEN
     RAISE EXCEPTION 'unexpected Testnet envelope storage interface';
   END IF;
+  -- Broadcast authorizations are created by an administrator only; the worker can only consume one
+  -- under a live lease through begin_testnet_broadcast.
+  IF has_table_privilege('wallet_api','wallet_private.broadcast_authorizations','SELECT,INSERT,UPDATE,DELETE') OR
+     has_table_privilege('wallet_worker','wallet_private.broadcast_authorizations','SELECT,INSERT,UPDATE,DELETE') OR
+     has_function_privilege('wallet_api','wallet_private.authorize_testnet_broadcast(text,text,text,text,text,integer)','EXECUTE') OR
+     has_function_privilege('wallet_worker','wallet_private.authorize_testnet_broadcast(text,text,text,text,text,integer)','EXECUTE') OR
+     has_function_privilege('wallet_api','wallet_private.begin_testnet_broadcast(text,text,text,text,text)','EXECUTE') OR
+     NOT has_function_privilege('wallet_worker','wallet_private.begin_testnet_broadcast(text,text,text,text,text)','EXECUTE') THEN
+    RAISE EXCEPTION 'unexpected broadcast authorization privileges';
+  END IF;
 END $$;
 -- Temporary INSERT grant isolates the RLS write test from privilege-denial tests.
 GRANT INSERT ON wallet_private.sessions TO wallet_api;

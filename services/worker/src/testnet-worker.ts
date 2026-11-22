@@ -7,9 +7,10 @@ import { prepareAndPersistTestnet } from "./testnet-preflight.js";
 import { withRpcDeadline } from "./rpc-deadline.js";
 import { LegacyEnvelopeError } from "./spend-interface.js";
 import { verifyTestnetTransfer } from "./testnet-transfer.js";
+import { broadcastAuthorizedTestnet, type SendRpc } from "./testnet-broadcast.js";
 import { testReportAmount, testReportRecipient, testnetUsdcContract } from "./testnet-constants.js";
 
-/** Read-only RPC surface. It has no sendTransaction: this loop cannot broadcast. */
+/** Read-only RPC surface. It has no sendTransaction; sending needs an explicit BroadcastActivation. */
 export type TestnetReadRpc = Pick<rpc.Server, "getNetwork" | "getLatestLedger" | "getAccount" | "simulateTransaction" | "getTransaction">;
 export interface TestnetWorkerOptions {
   pool: Pool;
@@ -21,11 +22,22 @@ export interface TestnetWorkerOptions {
   leaseSeconds: number;
   /** Per-call RPC deadline; a stalled RPC must not hold the worker forever. Default 10 s. */
   rpcTimeoutMs?: number;
+  /** Absent by default: nothing is ever sent. See BroadcastActivation. */
+  broadcast?: BroadcastActivation;
 }
-export type PaymentStep = "idle" | "lease_lost" | "awaiting_broadcast" | "awaiting_evidence" | "evidence_rejected" | "confirmed" | "legacy_envelope";
+/** Explicit single-order activation (TESTNET_BROADCAST=single-authorized). A send additionally needs a
+ * human authorization stored in PostgreSQL for the exact hash of that order's signed envelope. */
+export interface BroadcastActivation {
+  orderId: string;
+  rpc: SendRpc;
+  nowSeconds?: () => number;
+}
+export type PaymentStep = "idle" | "lease_lost" | "awaiting_broadcast" | "awaiting_evidence" | "evidence_rejected" | "confirmed" | "legacy_envelope"
+  | "submitted" | "awaiting_authorization" | "envelope_expired" | "broadcast_blocked";
 
 /** Claim one Testnet payment, recover or create its single signed envelope and reconcile by hash.
  * Timeout, NOT_FOUND or unverified events keep the hold and the attempt; nothing is marked failed.
+ * With an explicit activation, a NOT_FOUND may send the same stored bytes (see broadcastAuthorizedTestnet).
  * An envelope signed for WalletFoundation v1 is reported as legacy_envelope and never re-signed. */
 export async function processTestnetPaymentOnce(options: TestnetWorkerOptions): Promise<PaymentStep> {
   const { pool } = options;
@@ -51,9 +63,22 @@ export async function processTestnetPaymentOnce(options: TestnetWorkerOptions): 
   try { loaded = await loadTestnetEnvelope(pool, lease, snapshot.attempt_id, options.keyForId); }
   catch (error) { if (error instanceof LegacyEnvelopeError) return "legacy_envelope"; throw error; }
   if (!loaded) return "lease_lost";
-  // Broadcast is intentionally absent (see testnet-constants.ts broadcastBlocker).
+  // Reconcile by the stored hash first: a transaction already on chain is never sent again.
   const observed = await verifyTestnetTransfer(readRpc, loaded.context, loaded.envelope);
-  if (observed.status !== "verified") return attemptState === "uncertain" ? "awaiting_evidence" : "awaiting_broadcast";
+  if (observed.status !== "verified") {
+    const waiting: PaymentStep = attemptState === "uncertain" ? "awaiting_evidence" : "awaiting_broadcast";
+    // Only a definite NOT_FOUND for the single activated order may lead to sending the same bytes.
+    // RPC errors, FAILED (e.g. PolicyChanged) or unverified results never send and never re-sign.
+    if (!options.broadcast || observed.reason !== "not_found" || task.order_id !== options.broadcast.orderId) return waiting;
+    const outcome = await broadcastAuthorizedTestnet({ pool, freshRpc: readRpc, sendRpc: withRpcDeadline(options.broadcast.rpc, options.rpcTimeoutMs ?? 10_000),
+      lease, attemptId: snapshot.attempt_id, context: loaded.context, envelope: loaded.envelope, leaseSeconds: options.leaseSeconds,
+      nowSeconds: options.broadcast.nowSeconds ?? (() => Math.floor(Date.now() / 1000)) });
+    if (outcome === "submitted") return "submitted";
+    if (outcome === "not_authorized") return "awaiting_authorization";
+    if (outcome === "envelope_expired") return "envelope_expired";
+    if (outcome === "lease_lost") return "lease_lost";
+    return "broadcast_blocked";
+  }
   const renewed = await pool.query("SELECT wallet_private.renew_fixture($1,$2,$3,$4) AS owned", [lease.tenantId, lease.eventId, lease.token, options.leaseSeconds]);
   if (!renewed.rows[0]?.owned) return "lease_lost";
   const confirmed = await pool.query(

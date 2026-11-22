@@ -39,9 +39,12 @@ if (process.argv.includes("--check") || config.WORKER_MODE === "disabled") {
       }
       const server = new rpc.Server(config.STELLAR_RPC_URL!, { allowHttp: false });
       const provider = new DemoReportProvider();
-      console.log(`Testnet worker started without broadcast. ${broadcastBlocker}`);
+      const broadcast = config.TESTNET_BROADCAST === "single-authorized" ? { orderId: config.TESTNET_BROADCAST_ORDER_ID!, rpc: server } : undefined;
+      console.log(broadcast
+        ? `Testnet worker started with single-authorized broadcast for one order; each send needs a stored authorization for its exact hash.`
+        : `Testnet worker started without broadcast. ${broadcastBlocker}`);
       iterate = async () => {
-        const payment = await processTestnetPaymentOnce({ pool, rpc: server, signer, keyId: config.ENVELOPE_KEY_ID!, keyForId, leaseSeconds: config.WORKER_LEASE_SECONDS, rpcTimeoutMs: config.RPC_TIMEOUT_MS });
+        const payment = await processTestnetPaymentOnce({ pool, rpc: server, signer, keyId: config.ENVELOPE_KEY_ID!, keyForId, leaseSeconds: config.WORKER_LEASE_SECONDS, rpcTimeoutMs: config.RPC_TIMEOUT_MS, broadcast });
         if (payment !== "idle") console.log(`Testnet payment step: ${payment}`);
         const delivery = await processDemoDeliveryOnce({ pool, provider, leaseSeconds: config.WORKER_LEASE_SECONDS });
         if (delivery !== "idle") console.log(`Demo delivery step: ${delivery}`);

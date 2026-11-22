@@ -61,3 +61,8 @@ asignado sigue siendo de confianza para verificar el RPC antes de `confirm_testn
 La migración 009 integra WalletFoundation v2: `cards.policy_revision` (revisión revisada por un
 administrador), interfaz y revisión por sobre cifrado, eliminación de `store_testnet_envelope` v1 y
 confirmación solo para sobres v2. Los sobres v1 existentes se conservan para auditoría.
+
+La migración 010 añade `broadcast_authorizations`: un administrador (`authorize_testnet_broadcast`, sin
+concesión a roles de ejecución) autoriza el hash exacto del sobre v2 de una orden de 0,50 USDC con caducidad
+máxima de 24 h y 1–5 reenvíos. El worker solo la consume con `begin_testnet_broadcast` bajo lease vigente,
+que persiste `uncertain` antes del envío. Ningún rol de ejecución puede leerla ni modificarla.

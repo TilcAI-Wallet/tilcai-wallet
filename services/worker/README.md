@@ -32,28 +32,24 @@ trátalo como sensible y no lo imprimas. No se realiza difusión.
 junto al intento bajo el lease vigente. La clave de 32 bytes se inyecta desde un
 almacén externo; no está en la base ni se configura automáticamente. Al recuperar,
 `loadTestnetEnvelope` valida AEAD, metadatos, hash de red y digest de todos los bytes
-XDR. Esta ruta es una biblioteca aislada: **no está conectada al worker ejecutable**.
-`observeTestnetHash` consulta RPC, conserva `NOT_FOUND` y timeout como inciertos y
-no considera `SUCCESS` evidencia suficiente de pago.
+XDR. `verifyTestnetTransfer` consulta el hash por RPC, conserva `NOT_FOUND` y timeout
+como inciertos y solo acepta un evento SEP-41 que coincida con el sobre exacto.
 
-No existe un proceso ejecutable que coordine el envío y la conciliación, ni
-proveedor real de entrega. Las tarjetas `testnet` no están habilitadas en la API;
-no ejecutar contra fondos ni configurar un piloto con estas piezas. Ver
-[preflight y límites](../../docs/testnet-preflight.md).
+`broadcastAuthorizedTestnet` (`testnet-broadcast.ts`) está conectada al worker, pero
+deshabilitada por defecto. Solo envía los mismos bytes almacenados de la orden activada y
+con una autorización humana guardada para su hash, tras verificar sobre, red, límites de
+validez, secuencia del agente y estado v2 del contrato. Con WalletFoundation v2 el destinatario y
+la revisión de política forman parte de la operación firmada: un `set_policy` posterior hace
+fallar la ejecución en lugar de desviar el pago. Las pruebas usan un RPC falso y no acceden a una red.
 
-La biblioteca `testnet-broadcast.ts` puede invocar un RPC inyectado solo con gate
-explícito y recuperación cifrada, lease y verificación de política. **No está
-conectada al proceso ejecutable ni autorizada para uso real**. Con WalletFoundation v2 el
-destinatario y la revisión de política forman parte de la operación firmada, por lo que un
-`set_policy` posterior hace fallar la ejecución en lugar de desviar el pago (el riesgo v1 de
-`spend(amount)` queda mitigado). Activar transmisiones sigue requiriendo revisión y autorización
-expresa. Las pruebas pasan un transporte falso y no acceden a una red.
-
-## Modo Testnet ejecutable (difusión bloqueada)
+## Modo Testnet ejecutable (difusión deshabilitada por defecto)
 
 Solo se firma WalletFoundation v2: `version() == 2`, `policy_state()` con la revisión
 revisada de la tarjeta (`cards.policy_revision`) y `spend(amount, recipient, expected_policy_revision)`.
-Los sobres v1 se informan como `legacy_envelope` y no se regeneran. Ver
+Los sobres v1 se informan como `legacy_envelope` y no se regeneran. El sobre vale unos 10 minutos
+(120 ledgers / 600 s). La difusión está deshabilitada salvo con `TESTNET_BROADCAST=single-authorized`,
+`TESTNET_BROADCAST_ORDER_ID` y una autorización almacenada para el hash exacto
+([runbook](../../docs/testnet-runbook.md)). Ver
 [preflight](../../docs/testnet-preflight.md#destinatario-y-revisión-de-política-walletfoundation-v2).
 
 `WORKER_MODE=testnet` requiere `STELLAR_RPC_URL` HTTPS, `ENVELOPE_KEY_ID` y

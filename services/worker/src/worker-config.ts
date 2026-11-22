@@ -12,13 +12,22 @@ const base = z.object({
   ENVELOPE_KEY_FILE: z.string().min(1).optional(),
   AGENT_SIGNER_SECRET_FILE: z.string().min(1).optional(),
   TESTNET_BROADCAST: z.string().optional(),
+  TESTNET_BROADCAST_ORDER_ID: z.string().optional(),
 });
 export type WorkerConfig = z.infer<typeof base>;
 
 /** Fails closed: Testnet mode needs a trusted HTTPS RPC and an external envelope key. */
 export function parseWorkerConfig(env: NodeJS.ProcessEnv): WorkerConfig {
   const config = base.parse(env);
-  if (config.TESTNET_BROADCAST !== undefined && config.TESTNET_BROADCAST !== "disabled") throw new Error(broadcastBlocker);
+  // Disabled unless the exact mode is set; any other value refuses to start.
+  if (config.TESTNET_BROADCAST !== undefined && config.TESTNET_BROADCAST !== "disabled" && config.TESTNET_BROADCAST !== "single-authorized") throw new Error(broadcastBlocker);
+  if (config.TESTNET_BROADCAST === "single-authorized") {
+    if (config.WORKER_MODE !== "testnet") throw new Error(`${broadcastBlocker} single-authorized requires WORKER_MODE=testnet`);
+    if (!config.TESTNET_BROADCAST_ORDER_ID || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/.test(config.TESTNET_BROADCAST_ORDER_ID))
+      throw new Error(`${broadcastBlocker} single-authorized requires TESTNET_BROADCAST_ORDER_ID naming exactly one order`);
+  } else if (config.TESTNET_BROADCAST_ORDER_ID !== undefined) {
+    throw new Error(`${broadcastBlocker} TESTNET_BROADCAST_ORDER_ID is only valid with single-authorized`);
+  }
   if (config.WORKER_MODE === "testnet") {
     let rpcUrl: URL;
     try { rpcUrl = new URL(config.STELLAR_RPC_URL ?? ""); } catch { throw new Error("STELLAR_RPC_URL must be an HTTPS Testnet RPC URL"); }

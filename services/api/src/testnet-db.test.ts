@@ -12,7 +12,7 @@ import { processDemoDeliveryOnce } from "../../worker/src/demo-delivery-worker.j
 import { DemoReportProvider, type DeliveryProvider } from "../../worker/src/demo-report-provider.js";
 import { storeTestnetEnvelope } from "../../worker/src/postgres-envelope-vault.js";
 import { makeTestEnvelope } from "../../worker/src/test-envelope.fixture.js";
-import { simulatedReadRpc, type RpcOutcome } from "../../worker/src/test-rpc.fixture.js";
+import { fakeTestnetRpc, simulatedReadRpc, type RpcOutcome } from "../../worker/src/test-rpc.fixture.js";
 import { processTestnetPaymentOnce } from "../../worker/src/testnet-worker.js";
 import { fetchReceipt } from "../../../apps/web/src/lib/wallet-api.ts";
 
@@ -219,4 +219,94 @@ test("PostgreSQL: Testnet orders confirm only with verified evidence, deliver on
   assert.deepEqual([viaPwa.id, viaPwa.orderId, viaPwa.state, viaPwa.simulated, viaPwa.payment.txHash, viaPwa.payment.ledger, viaPwa.delivery.deliveryId, viaPwa.delivery.digest],
     [apiReceipt.receiptId, apiReceipt.orderId, "delivered", false, apiReceipt.payment.txHash, apiReceipt.payment.ledger, apiReceipt.delivery.evidenceId, apiReceipt.delivery.digest]);
   assert.equal((await fetchReceipt(base, tokF, fixtureOrder.receiptId)).simulated, true);
+});
+
+test("PostgreSQL: one human-authorized Testnet send is fenced, bounded and reconciled by the same hash (FAKE RPC, nothing transmitted)", { skip: !url, timeout: 120_000 }, async (t) => {
+  const admin = new pg.Pool({ connectionString: url, max: 1 });
+  const apiPool = new pg.Pool({ connectionString: url, options: "-c role=wallet_api", max: 2 });
+  let worker = new pg.Pool({ connectionString: url, options: "-c role=wallet_worker", max: 4 });
+  const app = createApi({ pool: apiPool });
+  t.after(async () => { await app.close(); await worker.end(); await apiPool.end(); await admin.end(); });
+  const s = randomUUID(), T = `bc-${s}`, session = `bs-${s}`, card = `bk-${s}`, token = newToken();
+  const sample = makeTestEnvelope(), key = randomBytes(32), keyId = "ci-broadcast-key";
+  await admin.query("INSERT INTO wallet_private.tenants(tenant_id) VALUES($1)", [T]);
+  await admin.query("INSERT INTO wallet_private.sessions(tenant_id,network,session_id,actor_id,expires_at) VALUES ($1,'testnet',$2,'actor',now()+interval '1 hour')", [T, session]);
+  await admin.query("INSERT INTO wallet_private.credentials(tenant_id,network,session_id,token_hash,scopes,expires_at) VALUES ($1,'testnet',$2,$3,$4,now()+interval '1 hour')", [T, session, sha(token), ["orders:write", "orders:read", "receipts:read"]]);
+  await admin.query("INSERT INTO wallet_private.cards(tenant_id,network,card_id,session_id,contract_id,asset_id,recipient,agent,balance_minor,payment_limit_minor,total_limit_minor,spent_minor,mode,policy_revision) VALUES ($1,'testnet',$2,$3,$4,$5,$6,$7,200000000,5000000,5000000,0,'testnet',0)", [T, card, session, sample.contractId, usdc, recipient, sample.agent]);
+  const created = await app.inject({ method: "POST", url: "/v1/orders", headers: { authorization: `Bearer ${token}`, "idempotency-key": "bc-1" }, payload: { cardId: card, offerId: "test-report", maxAmountMinor: "5000000" } });
+  assert.equal(created.statusCode, 202);
+  const order = created.json();
+  // Only this tenant is assigned to the worker login for the rest of the test.
+  await admin.query("DELETE FROM wallet_private.worker_assignments WHERE login_name=session_user");
+  await admin.query("INSERT INTO wallet_private.worker_assignments(login_name,tenant_id) SELECT session_user,$1", [T]);
+  const expire = () => admin.query("UPDATE wallet_private.outbox SET lease_until=now()-interval '1 second' WHERE tenant_id=$1 AND lease_until IS NOT NULL AND completed_at IS NULL", [T]);
+
+  // The signed v2 envelope is stored before any send can be considered.
+  const claimed = (await worker.query("SELECT * FROM wallet_private.claim_testnet(30)")).rows[0];
+  const attempt = (await admin.query("SELECT attempt_id FROM wallet_private.attempts WHERE tenant_id=$1", [T])).rows[0].attempt_id as string;
+  assert.equal(await storeTestnetEnvelope(worker, { tenantId: T, eventId: claimed.event_id, token: claimed.lease_token },
+    { keyId, tenantId: T, orderId: order.orderId, attemptId: attempt, contractId: sample.contractId, agent: sample.agent, transactionHash: sample.hash, validThroughLedger: 123, policyRevision: 0n }, key, sample.bytes), true);
+  await expire();
+
+  const fake = fakeTestnetRpc(sample);
+  const run = (activated: boolean) => processTestnetPaymentOnce({ pool: worker, rpc: fake.read, keyId, keyForId: async () => key, leaseSeconds: 30,
+    signer: { publicKey: sample.agent, signHash: async () => { throw new Error("must not sign again"); } },
+    broadcast: activated ? { orderId: order.orderId, rpc: fake.send, nowSeconds: () => 1 } : undefined });
+  const step = async (activated: boolean) => { const result = await run(activated); await expire(); return result; };
+  const state = async () => (await admin.query(`SELECT o.payment_state, a.state AS attempt_state,
+      (SELECT count(*) FROM wallet_private.attempts x WHERE x.tenant_id=o.tenant_id AND x.order_id=o.order_id)::int AS attempts,
+      (SELECT count(*) FROM wallet_private.holds h WHERE h.tenant_id=o.tenant_id AND h.order_id=o.order_id AND h.released_at IS NULL)::int AS held,
+      (SELECT b.send_count FROM wallet_private.broadcast_authorizations b WHERE b.tenant_id=o.tenant_id AND b.order_id=o.order_id) AS sends
+    FROM wallet_private.orders o JOIN wallet_private.attempts a ON a.tenant_id=o.tenant_id AND a.order_id=o.order_id WHERE o.tenant_id=$1 AND o.order_id=$2`, [T, order.orderId])).rows[0];
+
+  // Disabled by default, and activation alone is not enough without a stored authorization.
+  assert.equal(await step(false), "awaiting_broadcast");
+  assert.equal(await step(true), "awaiting_authorization");
+  assert.deepEqual(await state(), { payment_state: "pending", attempt_state: "prepared", attempts: 1, held: 1, sends: null });
+
+  // Only an administrator can authorize, and only the exact stored v2 hash of this pending order.
+  const authorizeSql = "SELECT wallet_private.authorize_testnet_broadcast($1,$2,$3,'ci-operator','single Testnet purchase',$4)";
+  for (const pool of [worker, apiPool]) await assert.rejects(() => pool.query(authorizeSql, [T, order.orderId, sample.hash, 30]), /permission denied/);
+  for (const pool of [worker, apiPool]) await assert.rejects(() => pool.query("SELECT * FROM wallet_private.broadcast_authorizations"), /permission denied/);
+  await assert.rejects(() => apiPool.query("SELECT wallet_private.begin_testnet_broadcast($1,$2,$3,$4,$5)", [T, "e", "t", attempt, sample.hash]), /permission denied/);
+  await assert.rejects(() => admin.query(authorizeSql, [T, order.orderId, "f".repeat(64), 30]), /no stored v2 envelope/);
+  await assert.rejects(() => admin.query(authorizeSql, [T, order.orderId, sample.hash, 1441]), /1-1440 minutes/);
+  await admin.query(authorizeSql, [T, order.orderId, sample.hash, 30]);
+  await assert.rejects(() => admin.query(authorizeSql, [T, order.orderId, sample.hash, 30]), /duplicate key/);
+
+  // Policy change since signing, or bytes about to expire: no send and no authorization consumed.
+  fake.chain.revision = 1n; assert.equal(await step(true), "broadcast_blocked"); fake.chain.revision = 0n;
+  fake.chain.latestLedger = 122; assert.equal(await step(true), "envelope_expired"); fake.chain.latestLedger = 105;
+  assert.equal(fake.sent.length, 0); assert.equal((await state()).sends, 0);
+
+  // Two concurrent workers: one claims, persists uncertain and sends; the other is idle.
+  assert.deepEqual((await Promise.all([run(true), run(true)])).sort(), ["idle", "submitted"]);
+  assert.equal(await run(true), "idle", "the live lease prevents a second sender");
+  await expire();
+  assert.deepEqual(fake.sent, [sample.bytes]);
+  assert.deepEqual(await state(), { payment_state: "uncertain", attempt_state: "uncertain", attempts: 1, held: 1, sends: 1 });
+
+  // Lost response and restart: NOT_FOUND re-sends only the same bytes; RPC errors and FAILED never send.
+  fake.chain.send = "timeout";
+  await worker.end(); worker = new pg.Pool({ connectionString: url, options: "-c role=wallet_worker", max: 4 });
+  assert.equal(await step(true), "submitted");
+  fake.chain.transaction = "timeout"; assert.equal(await step(true), "awaiting_evidence");
+  fake.chain.transaction = "failed"; assert.equal(await step(true), "awaiting_evidence");
+  fake.chain.transaction = "not_found";
+  await admin.query("UPDATE wallet_private.broadcast_authorizations SET revoked_at=now() WHERE tenant_id=$1", [T]);
+  assert.equal(await step(true), "awaiting_authorization", "revoked");
+  await admin.query("UPDATE wallet_private.broadcast_authorizations SET revoked_at=NULL WHERE tenant_id=$1", [T]);
+  assert.equal(await step(true), "submitted");
+  assert.equal(await step(true), "awaiting_authorization", "max_sends reached");
+  assert.deepEqual(fake.sent, [sample.bytes, sample.bytes, sample.bytes]);
+  assert.deepEqual(await state(), { payment_state: "uncertain", attempt_state: "uncertain", attempts: 1, held: 1, sends: 3 });
+
+  // Verified evidence for the same hash confirms once and releases the hold; nothing else is sent.
+  fake.chain.transaction = "verified";
+  assert.equal(await step(true), "confirmed");
+  assert.equal(await step(true), "idle");
+  assert.deepEqual(await state(), { payment_state: "confirmed", attempt_state: "confirmed", attempts: 1, held: 0, sends: 3 });
+  assert.equal(fake.sent.length, 3);
+  const receipt = (await app.inject({ method: "GET", url: `/v1/receipts/${order.receiptId}`, headers: { authorization: `Bearer ${token}` } })).json();
+  assert.deepEqual(receipt.payment, { status: "confirmed", txHash: sample.hash, ledger: 110 });
 });
