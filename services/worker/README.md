@@ -17,3 +17,8 @@ se prepara, firma o transmite desde el worker actual.
 `synthetic-payment.ts` es exclusivamente un doble de prueba en memoria. Sus hashes
 con prefijo `synthetic:` no son hashes Stellar ni evidencia de Testnet, y no se
 conecta al worker ejecutable. No implementa firma, red, leases ni reconciliación.
+
+`lease.ts` ofrece primitivas de reclamo por tenant con `SKIP LOCKED` y escritura
+condicionada al token de lease. Todavía no está conectada al proceso ejecutable ni
+al adaptador Stellar; no envía transacciones ni procesa entregas. Los tests de estas
+primitivas son unitarios y no prueban contención real ni reinicios con PostgreSQL.

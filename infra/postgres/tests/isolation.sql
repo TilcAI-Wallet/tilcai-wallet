@@ -19,6 +19,9 @@ INSERT INTO wallet_private.tenants (tenant_id) VALUES ('test-tenant-a'), ('test-
 INSERT INTO wallet_private.sessions (tenant_id, network, session_id, actor_id, expires_at)
 VALUES ('test-tenant-a', 'testnet', 'test-session-a', 'actor-a', now() + interval '1 hour'),
        ('test-tenant-b', 'testnet', 'test-session-b', 'actor-b', now() + interval '1 hour');
+INSERT INTO wallet_private.credentials (tenant_id,network,session_id,token_hash,scopes,expires_at)
+VALUES ('test-tenant-a','testnet','test-session-a',decode(repeat('01',32),'hex'),ARRAY['orders:read'],now() + interval '1 hour'),
+       ('test-tenant-b','testnet','test-session-b',decode(repeat('02',32),'hex'),ARRAY['cards:read'],now() - interval '1 hour');
 INSERT INTO wallet_private.cards (tenant_id, network, card_id, session_id, contract_id, asset_id, recipient, agent)
 VALUES ('test-tenant-a','testnet','card-a','test-session-a','contract-a','asset-a','recipient-a','agent-a');
 INSERT INTO wallet_private.orders (tenant_id, network, order_id, card_id, session_id, offer_id, amount, payment_state, delivery_state, refund_state)
@@ -40,6 +43,18 @@ DO $$ BEGIN
   END;
 END $$;
 SET LOCAL ROLE wallet_api;
+DO $$ BEGIN
+  IF (SELECT count(*) FROM wallet_private.verify_credential(decode(repeat('01',32),'hex'))) <> 1 THEN
+    RAISE EXCEPTION 'valid credential rejected';
+  END IF;
+  IF (SELECT count(*) FROM wallet_private.verify_credential(decode(repeat('02',32),'hex'))) <> 0 THEN
+    RAISE EXCEPTION 'expired credential accepted';
+  END IF;
+  IF (SELECT count(*) FROM wallet_private.verify_credential(decode(repeat('03',32),'hex'))) <> 0 THEN
+    RAISE EXCEPTION 'invalid credential accepted';
+  END IF;
+  PERFORM set_config('wallet.tenant_id', '', true);
+END $$;
 DO $$ BEGIN
   IF (SELECT count(*) FROM wallet_private.sessions) <> 0 THEN RAISE EXCEPTION 'missing tenant context leaked rows'; END IF;
 END $$;
