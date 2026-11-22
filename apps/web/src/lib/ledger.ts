@@ -41,6 +41,7 @@ export type Store = {
   notices: Notice[];
   agents: Agent[];
   sessions: AgentSession[];
+  pairings: Pairing[];
   counter: number;
 };
 
@@ -71,6 +72,7 @@ export function createStore(now = new Date("2026-11-21T20:00:00.000Z")): Store {
       { id: "ses_codex", agentId: codexAgentId, title: "Informe de mercado", state: "active", startedAt: at },
       { id: "ses_seo", agentId: "agt_seo", title: "Compra de datos (Agente SEO)", state: "ended", startedAt: at },
     ],
+    pairings: [],
     counter: 0,
   };
 }
@@ -92,8 +94,8 @@ export function agentStatus(agent: Agent): AgentStatus {
 export const agentsView = (store: Store): Agent[] =>
   store.agents.map((agent) => (agent.id === codexAgentId ? { ...agent, limit: store.cap.toString(), spent: store.spent.toString() } : agent));
 
-const nextId = (store: Store, prefix: string) => `${prefix}_${++store.counter}`;
-const fakeHash = (seed: number) => Array.from({ length: 8 }, (_, i) => ((seed * 2654435761 + i * 40503) >>> 0).toString(16).padStart(8, "0")).join("");
+export const nextId = (store: Store, prefix: string) => `${prefix}_${++store.counter}`;
+export const fakeHash = (seed: number) => Array.from({ length: 8 }, (_, i) => ((seed * 2654435761 + i * 40503) >>> 0).toString(16).padStart(8, "0")).join("");
 
 export class LedgerError extends Error {}
 
@@ -143,9 +145,7 @@ export type AgentClient = keyof typeof agentClients;
 /** Vincula un agente nuevo: queda con acceso de lectura y sin tarjeta, o sea sin acceso a fondos. */
 export function connectAgent(store: Store, client: string, alias: string, now: Date) {
   if (!Object.hasOwn(agentClients, client)) throw new LedgerError("Elige un cliente: Claude Code o Codex.");
-  const name = alias.trim().replace(/\s+/g, " ");
-  if (name.length < 2 || name.length > 30) throw new LedgerError("El alias debe tener entre 2 y 30 caracteres.");
-  if (store.agents.some((agent) => agent.name.toLowerCase() === name.toLowerCase())) throw new LedgerError("Ya tienes un agente con ese alias.");
+  const name = cleanAlias(store, alias);
   const id = nextId(store, "agt");
   store.agents.push({ id, name, role: agentClients[client as AgentClient].role, icon: "laptop", paused: false, linkedCard: false, card: null, limit: "0", spent: "0", maxPerPurchase: "0" });
   store.notices.unshift({ id: nextId(store, "ntf"), title: "Agente conectado", body: `${name} quedó vinculado. Configura su tarjeta y límites para que pueda comprar.`, at: now.toISOString(), read: false });
@@ -164,6 +164,66 @@ export function configureAgentCard(store: Store, agentId: string, limit: bigint,
   agent.limit = limit.toString();
   agent.maxPerPurchase = maxPerPurchase.toString();
   store.notices.unshift({ id: nextId(store, "ntf"), title: "Tarjeta activada", body: `${agent.name} ya puede comprar dentro de sus límites.`, at: now.toISOString(), read: false });
+}
+
+const pairingTtlMs = 10 * 60_000;
+
+/** Intento de vincular un agente: el código viaja en la URL o el token del cliente MCP. */
+export type Pairing = { code: string; client: AgentClient; alias: string; createdAt: string; status: "waiting" | "connected" | "approved"; agentId?: string };
+
+function cleanAlias(store: Store, alias: string) {
+  const name = alias.trim().replace(/\s+/g, " ");
+  if (name.length < 2 || name.length > 30) throw new LedgerError("El alias debe tener entre 2 y 30 caracteres.");
+  if (store.agents.some((agent) => agent.name.toLowerCase() === name.toLowerCase())) throw new LedgerError("Ya tienes un agente con ese alias.");
+  return name;
+}
+
+/** Abre una vinculación pendiente (vence en 10 minutos). `replace` descarta la anterior si la persona vuelve atrás. */
+export function createPairing(store: Store, client: string, alias: string, code: string, now: Date, replace?: string) {
+  if (!Object.hasOwn(agentClients, client)) throw new LedgerError("Elige un cliente: Claude Code o Codex.");
+  const name = cleanAlias(store, alias);
+  store.pairings = store.pairings.filter((p) => p.code !== replace || p.status === "approved");
+  store.pairings.push({ code, client: client as AgentClient, alias: name, createdAt: now.toISOString(), status: "waiting" });
+  return code;
+}
+
+/** Busca una vinculación vigente: las aprobadas no vencen; las pendientes sí. */
+export function findPairing(store: Store, code: string, now: Date) {
+  store.pairings = store.pairings.filter((p) => p.status === "approved" || now.getTime() - new Date(p.createdAt).getTime() < pairingTtlMs);
+  return store.pairings.find((p) => p.code === code);
+}
+
+export function approvePairing(store: Store, code: string, now: Date) {
+  const pairing = findPairing(store, code, now);
+  if (!pairing) throw new LedgerError("La conexión venció. Vuelve atrás para generar un código nuevo.");
+  if (pairing.status !== "approved") {
+    pairing.agentId = connectAgent(store, pairing.client, pairing.alias, now);
+    pairing.status = "approved";
+  }
+  return pairing.agentId!;
+}
+
+export function rejectPairing(store: Store, code: string) {
+  store.pairings = store.pairings.filter((p) => p.code !== code || p.status === "approved");
+}
+
+/** Compra solicitada por un agente conectado: respeta pausa, tarjeta, máximo por compra, tope acumulado y saldo. */
+export function agentPurchase(store: Store, agentId: string, amount: bigint, label: string, now: Date) {
+  const agent = store.agents.find((a) => a.id === agentId);
+  if (!agent) throw new LedgerError("Agente desconocido.");
+  if (agent.paused) throw new LedgerError("El agente está en pausa: la persona dueña debe reanudarlo.");
+  if (agent.card === null) throw new LedgerError("El agente no tiene tarjeta: no tiene acceso a fondos.");
+  if (amount <= 0n) throw new LedgerError("El monto debe ser mayor que cero.");
+  if (amount > BigInt(agent.maxPerPurchase)) throw new LedgerError("El monto supera el máximo por compra de esta tarjeta.");
+  if (BigInt(agent.spent) + amount > BigInt(agent.limit)) throw new LedgerError("La compra superaría el tope acumulado de la tarjeta.");
+  if (amount > store.balance) throw new LedgerError("La wallet no tiene saldo suficiente.");
+  const description = label.trim().slice(0, 80) || "Compra del agente";
+  store.balance -= amount;
+  agent.spent = (BigInt(agent.spent) + amount).toString();
+  const id = nextId(store, "act");
+  store.activity.unshift({ id, kind: "payment", label: description, amount: amount.toString(), at: now.toISOString(), receiptId: null, txHash: fakeHash(store.counter + 13), counterparty: agent.name });
+  store.notices.unshift({ id: nextId(store, "ntf"), title: `Pago de ${agent.name}`, body: `${agent.name} pagó ${amount / 10_000_000n},${(amount % 10_000_000n).toString().padStart(7, "0").slice(0, 2)} USDC: ${description}.`, at: now.toISOString(), read: false });
+  return id;
 }
 
 export function setAgentPaused(store: Store, agentId: string, paused: boolean) {
