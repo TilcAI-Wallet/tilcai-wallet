@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { palette, projectName } from "@tilcai-wallet/config";
+import { projectName } from "@tilcai-wallet/config";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -13,8 +13,8 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     categories: ["finance"],
-    background_color: palette.background,
-    theme_color: palette.violet,
+    background_color: "#0b0b0d",
+    theme_color: "#0b0b0d",
     // El logo ocupa la zona segura central, así que el mismo PNG sirve como "maskable".
     icons: [
       { src: "/wallet-icon-192.png", sizes: "192x192", type: "image/png" },
