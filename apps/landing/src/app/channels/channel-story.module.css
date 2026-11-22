@@ -1,0 +1,16 @@
+.section {
+  background: #121017;
+  color: #f8f6ee;
+  --story-accent: #c8a6ff;
+  --story-muted: #cdbbd8;
+  --story-track: #5b486a;
+  --story-border: #493751;
+}
+.section [data-story-track] { --beat-height: clamp(15rem, 49svh, 26rem); }
+
+@media (max-height: 699px), (prefers-reduced-motion: reduce) {
+  .section article + article {
+    padding-top: 1rem;
+    border-top: 1px solid var(--story-border);
+  }
+}
