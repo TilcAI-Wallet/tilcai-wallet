@@ -6,17 +6,17 @@ import { useEffect, useState, useSyncExternalStore, useTransition } from "react"
 import { approvePairingAction, confirmConnectionAction, createPairingAction, pairingStatusAction, rejectPairingAction } from "@/app/actions";
 import { agentClients, type AgentClient } from "@/lib/ledger";
 import { verifyPasskey } from "@/lib/passkey";
-import { Icon, type IconName } from "./Icon";
-import { Logo } from "./Logo";
+import { Icon } from "./Icon";
+import { AgentLogo, Logo, type AgentLogoName } from "./Logo";
 import { primaryButton, secondaryButton } from "./Screen";
 import { Banner, Field } from "./ui";
 
 type Step = 1 | 2 | 3 | 4;
 
-const clients: { id: AgentClient; icon: IconName; alias: string; config: (url: string) => string; where: string; app: string }[] = [
+const clients: { id: AgentClient; logo: AgentLogoName; alias: string; config: (url: string) => string; where: string; app: string }[] = [
   {
     id: "claude",
-    icon: "asterisk",
+    logo: "claude",
     alias: "Claude · Portátil",
     where: "Abre una terminal en tu proyecto y pega el comando de arriba (Claude Code).",
     config: (url) => `claude mcp add --transport http tilcai-wallet ${url}`,
@@ -24,7 +24,7 @@ const clients: { id: AgentClient; icon: IconName; alias: string; config: (url: s
   },
   {
     id: "codex",
-    icon: "hexagon",
+    logo: "chatgpt",
     alias: "Codex · Escritorio",
     where: "Pega la configuración en ~/.codex/config.toml (Codex).",
     config: (url) => `[mcp_servers.tilcai-wallet]\nurl = "${url}"`,
@@ -33,9 +33,9 @@ const clients: { id: AgentClient; icon: IconName; alias: string; config: (url: s
 ];
 
 // Enlaces universales: en el celular abren la app instalada de Claude o de ChatGPT; si no está, abren la web.
-const apps: { name: string; href: string; icon: IconName }[] = [
-  { name: "Claude", href: "https://claude.ai/settings/connectors", icon: "asterisk" },
-  { name: "ChatGPT", href: "https://chatgpt.com/#settings/Connectors", icon: "hexagon" },
+const apps: { name: string; href: string; logo: AgentLogoName }[] = [
+  { name: "Claude", href: "https://claude.ai/settings/connectors", logo: "claude" },
+  { name: "ChatGPT", href: "https://chatgpt.com/#settings/Connectors", logo: "chatgpt" },
 ];
 
 const permissions = [
@@ -189,7 +189,7 @@ export function NewAgentFlow() {
                   className={`flex min-h-20 items-center gap-3 rounded-3xl border p-3 text-left ${on ? "border-accent bg-accent text-ink" : "border-ivory/50"}`}
                 >
                   <span className={on ? "flex size-12 shrink-0 items-center justify-center text-ink" : "flex size-12 shrink-0 items-center justify-center text-ivory"}>
-                    <Icon name={c.icon} size={34} />
+                    <AgentLogo name={c.logo} size={34} />
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col">
                     <span className="text-xl">{agentClients[c.id].name}</span>
@@ -258,7 +258,7 @@ export function NewAgentFlow() {
                   onClick={() => void copy(url, "url")}
                   className="flex min-h-12 items-center justify-center gap-1.5 rounded-full border border-accent px-2 text-base whitespace-nowrap text-accent"
                 >
-                  <Icon name={app.icon} size={22} />
+                  <AgentLogo name={app.logo} size={22} />
                   Abrir {app.name}
                 </a>
               ))}

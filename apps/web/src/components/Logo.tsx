@@ -29,3 +29,11 @@ export function Lockup({ size = 56, compact = false }: { size?: number; compact?
     </div>
   );
 }
+
+export type AgentLogoName = "claude" | "chatgpt";
+
+/** Marca de Claude o de ChatGPT/Codex pintada con el color de texto actual (paleta de Tilcai), como máscara del SVG. */
+export function AgentLogo({ name, size = 32 }: { name: AgentLogoName; size?: number }) {
+  const mask = `url(/img/logo/${name}-mark.svg) center / contain no-repeat`;
+  return <span aria-hidden="true" className="inline-block shrink-0 bg-current" style={{ width: size, height: size, mask, WebkitMask: mask }} />;
+}
