@@ -20,7 +20,8 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" className={bargain.className}>
-      <body>{children}</body>
+      {/* Extensiones del navegador (antivirus, etc.) añaden atributos al <body> antes de hidratar; no es un error de la app. */}
+      <body suppressHydrationWarning>{children}</body>
     </html>
   );
 }
