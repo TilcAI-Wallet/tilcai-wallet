@@ -91,7 +91,7 @@ export default function Landing() {
               </dl>
               <div className="print-line mt-1 flex items-baseline justify-between border-t-2 border-ink pt-4" style={line(5)}>
                 <span>Saldo</span>
-                <span className="font-sans text-3xl font-extrabold tracking-tight">24,50</span>
+                <span className="font-sans text-3xl font-extrabold tracking-tight">19,50</span>
               </div>
               <p className="print-line mt-5 break-all text-[11px] leading-snug text-muted" style={line(6)}>
                 tx 7f3a9c…e41b · recibo r_0001
