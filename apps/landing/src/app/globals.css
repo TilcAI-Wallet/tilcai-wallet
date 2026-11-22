@@ -10,7 +10,6 @@
   --color-violet-deep: #3d138f;
   --color-line: #d8d0c8;
   --font-sans: var(--font-schibsted), system-ui, sans-serif;
-  --font-mono: var(--font-plex-mono), ui-monospace, monospace;
 }
 
 body {
@@ -27,29 +26,4 @@ body {
 
 .on-violet :focus-visible {
   outline-color: var(--color-paper);
-}
-
-/* Torn-paper bottom edge for the receipt. */
-.receipt-edge {
-  height: 12px;
-  background: radial-gradient(circle at 8px 12px, transparent 7px, var(--color-paper) 7.5px) 0 0 / 16px 12px repeat-x;
-}
-
-/* The one motion on the page: receipt lines print in on load. */
-@keyframes print {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-.print-line {
-  animation: print 420ms ease-out both;
-  animation-delay: calc(var(--i) * 140ms + 250ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .print-line {
-    animation: none;
-  }
 }
