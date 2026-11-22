@@ -1,4 +1,4 @@
-import { ArrowRight, Check, Plug, SquareTerminal } from "lucide-react";
+import { ArrowRight, Check, ChevronRight, GitBranch, Plug, SquareTerminal } from "lucide-react";
 import Image from "next/image";
 import type { CSSProperties } from "react";
 import type { TerminalDemo } from "./channel-types";
@@ -7,10 +7,17 @@ import styles from "./terminal-scene.module.css";
 
 export function TerminalScene({ scene }: { scene: TerminalDemo }) {
   return (
-    <figure className={styles.terminal} data-theme={scene.theme} aria-label={`Terminal ilustrativa de ${scene.name}`}>
+    <figure className={styles.terminal} data-theme={scene.theme} aria-label={`Recorrido de ${scene.name} en terminal`}>
       <div className={styles.bar}>
-        {scene.theme === "cli" ? <SquareTerminal size={24} aria-hidden="true" />
-          : <Image src={`/brand/channel-${scene.theme}.svg`} alt="" width={29} height={29} unoptimized />}
+        <SquareTerminal size={17} aria-hidden="true" />
+        <span className={styles.workspace}>tilcai-wallet</span>
+        <span className={styles.branch}><GitBranch size={13} aria-hidden="true" /> main</span>
+      </div>
+      <div className={styles.client}>
+        <div className={styles.mark}>
+          {scene.theme === "cli" ? <SquareTerminal size={31} aria-hidden="true" />
+            : <Image src={`/brand/channel-${scene.theme}.svg`} alt="" width={36} height={36} unoptimized />}
+        </div>
         <strong>{scene.name}</strong>
         <span>{scene.theme === "cli" ? "CLI" : "MCP · stdio"}</span>
       </div>
@@ -26,7 +33,10 @@ export function TerminalScene({ scene }: { scene: TerminalDemo }) {
           );
         })}
       </ol>
-      <div className={styles.footer}>TilcAI Wallet <span>Stellar Testnet · Ejemplo</span></div>
+      <div className={styles.footer}>
+        <span className={styles.cursor} aria-hidden="true"><ChevronRight size={15} /><i /></span>
+        <span>TilcAI Wallet · Stellar Testnet</span>
+      </div>
     </figure>
   );
 }
