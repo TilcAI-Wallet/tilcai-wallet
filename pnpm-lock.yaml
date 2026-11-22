@@ -118,9 +118,18 @@ importers:
       '@modelcontextprotocol/server':
         specifier: 2.4.0
         version: 2.4.0
+      '@tilcai-wallet/api-contracts':
+        specifier: workspace:*
+        version: link:../../packages/api-contracts
       '@tilcai-wallet/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@tilcai-wallet/wallet-sdk':
+        specifier: workspace:*
+        version: link:../../packages/wallet-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
 
   apps/mobile:
     dependencies:
@@ -326,7 +335,11 @@ importers:
         specifier: 'catalog:'
         version: 4.6.7
 
-  tests: {}
+  tests:
+    devDependencies:
+      '@tilcai-wallet/api-contracts':
+        specifier: workspace:*
+        version: link:../packages/api-contracts
 
 packages:
 

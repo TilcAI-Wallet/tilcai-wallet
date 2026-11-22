@@ -10,6 +10,9 @@
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",
-    "@tilcai-wallet/config": "workspace:*"
+    "@tilcai-wallet/api-contracts": "workspace:*",
+    "@tilcai-wallet/config": "workspace:*",
+    "@tilcai-wallet/wallet-sdk": "workspace:*",
+    "zod": "catalog:"
   }
 }

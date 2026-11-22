@@ -1,16 +1,9 @@
-import type { CSSProperties } from "react";
 import { projectName } from "@tilcai-wallet/config";
+import { LandingHeader, LandingHero } from "./landing-hero";
 
 // shortcut: points to the GitHub org until the team has a pilot form or contact email.
 const pilotUrl = "https://github.com/TilcAI-Wallet";
 const repoUrl = "https://github.com/TilcAI-Wallet/tilcai-wallet";
-
-const receipt: [string, string][] = [
-  ["Permiso", "Tope 0,50 USDC"],
-  ["Orden", "Informe de mercado"],
-  ["Pago", "0,50 USDC"],
-  ["Entrega", "Verificada"],
-];
 
 const steps = [
   {
@@ -40,71 +33,13 @@ const controls = [
 
 const channels = ["Web", "App móvil", "Extensión de navegador", "MCP para agentes", "Telegram", "WhatsApp", "Terminal"];
 
-function line(i: number) {
-  return { "--i": i } as CSSProperties;
-}
-
 export default function Landing() {
   return (
     <>
-      <div className="on-violet bg-violet text-paper">
-        <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 md:px-10">
-          <span className="text-lg font-bold tracking-tight">{projectName}</span>
-          <a href={pilotUrl} className="rounded-full px-4 py-2 text-sm font-semibold ring-1 ring-paper/40 hover:bg-paper/10">
-            Solicitar el piloto
-          </a>
-        </header>
-
-        <section className="mx-auto grid max-w-6xl items-center gap-14 px-6 pt-10 pb-20 md:grid-cols-[1.15fr_1fr] md:px-10 md:pt-16 md:pb-28">
-          <div>
-            <h1 className="text-5xl leading-[0.95] font-extrabold tracking-[-0.035em] text-balance md:text-7xl">
-              Tu agente compra. Tú pones el límite.
-            </h1>
-            <p className="mt-7 max-w-[34rem] text-lg leading-relaxed text-paper/85">
-              {projectName} le da a cada agente de IA una tarjeta con saldo y tope propios. Apruebas desde el celular y
-              cada compra deja un recibo verificable en Stellar.
-            </p>
-            <div className="mt-9 flex flex-wrap gap-3">
-              <a href={pilotUrl} className="rounded-full bg-paper px-6 py-3 font-semibold text-violet-deep hover:bg-sand">
-                Solicitar el piloto
-              </a>
-              <a href="#como-funciona" className="rounded-full px-6 py-3 font-semibold ring-1 ring-paper/40 hover:bg-paper/10">
-                Ver cómo funciona
-              </a>
-            </div>
-            <p className="mt-6 text-sm text-paper/70">En desarrollo sobre Stellar testnet.</p>
-          </div>
-
-          <figure className="mx-auto w-full max-w-sm drop-shadow-[0_24px_40px_rgba(30,8,80,0.45)]" aria-label="Ejemplo de recibo de compra de un agente">
-            <div className="bg-paper px-7 pt-7 pb-5 font-mono text-[13px] text-ink">
-              <div className="print-line flex justify-between border-b border-dashed border-line pb-4" style={line(0)}>
-                <span className="font-medium">Codex · Portátil</span>
-                <span className="text-muted">testnet</span>
-              </div>
-              <dl className="divide-y divide-dashed divide-line">
-                {receipt.map(([label, value], i) => (
-                  <div key={label} className="print-line flex justify-between py-3" style={line(i + 1)}>
-                    <dt className="text-muted">{label}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="print-line mt-1 flex items-baseline justify-between border-t-2 border-ink pt-4" style={line(5)}>
-                <span>Saldo</span>
-                <span className="font-sans text-3xl font-extrabold tracking-tight">19,50</span>
-              </div>
-              <p className="print-line mt-5 break-all text-[11px] leading-snug text-muted" style={line(6)}>
-                tx 7f3a9c…e41b · recibo r_0001
-              </p>
-            </div>
-            <div className="receipt-edge" />
-            <figcaption className="mt-4 text-center text-sm text-paper/70">Recibo de ejemplo de la demo</figcaption>
-          </figure>
-        </section>
-      </div>
-
+      <LandingHeader />
       <main>
-        <section id="como-funciona" className="mx-auto max-w-6xl scroll-mt-6 px-6 py-24 md:px-10">
+        <LandingHero />
+        <section id="como-funciona" className="mx-auto max-w-6xl scroll-mt-6 px-6 pt-14 pb-24 md:px-10">
           <h2 className="max-w-xl text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Cómo funciona</h2>
           <ol className="mt-14 grid gap-x-10 gap-y-12 md:grid-cols-2 lg:grid-cols-4">
             {steps.map((step, i) => (
@@ -136,7 +71,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-6 py-24 md:px-10">
+        <section id="canales" className="mx-auto max-w-6xl px-6 py-24 md:px-10">
           <h2 className="text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Donde ya trabajas</h2>
           <p className="mt-5 max-w-xl leading-relaxed text-muted">
             La misma wallet y los mismos recibos, sin importar desde dónde se use.
@@ -150,7 +85,7 @@ export default function Landing() {
           </ul>
         </section>
 
-        <section className="on-violet mx-auto mb-24 max-w-6xl px-6 md:px-10">
+        <section id="piloto" className="on-violet mx-auto mb-24 max-w-6xl px-6 md:px-10">
           <div className="bg-violet-deep px-8 py-14 text-paper md:px-14 md:py-20">
             <h2 className="max-w-2xl text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Piloto con agencias de La Paz</h2>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-paper/85">
