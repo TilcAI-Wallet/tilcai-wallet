@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
-import { approvePairingAction, createPairingAction, pairingStatusAction, rejectPairingAction } from "@/app/actions";
+import { approvePairingAction, confirmConnectionAction, createPairingAction, pairingStatusAction, rejectPairingAction } from "@/app/actions";
 import { agentClients, type AgentClient } from "@/lib/ledger";
 import { verifyPasskey } from "@/lib/passkey";
 import { Icon, type IconName } from "./Icon";
@@ -306,6 +306,22 @@ export function NewAgentFlow() {
               </div>
             </section>
           )}
+          {error && <Banner tone="error">{error}</Banner>}
+          <button
+            type="button"
+            disabled={pending || !code || expired}
+            onClick={() =>
+              start(async () => {
+                setError(null);
+                const result = await confirmConnectionAction(code ?? "");
+                if (!result.ok) return setError(result.error);
+                setStep(3);
+              })
+            }
+            className={`${secondaryButton} disabled:opacity-60`}
+          >
+            Ya lo agregué, continuar
+          </button>
         </>
       )}
 
