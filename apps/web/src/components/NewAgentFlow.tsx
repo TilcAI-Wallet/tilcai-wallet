@@ -59,6 +59,7 @@ export function NewAgentFlow() {
   const [help, setHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const [agentId, setAgentId] = useState<string>();
   const [pending, start] = useTransition();
   const client = clients.find((c) => c.id === clientId)!;
@@ -118,6 +119,32 @@ export function NewAgentFlow() {
       if (!result.ok) return setError(result.error);
       setAgentId(result.id);
       setStep(4);
+    });
+  }
+
+  // «Conectar»: avanza solo si un cliente MCP real ya llamó al servidor con este código.
+  // Mientras no haya una URL pública con HTTPS, desde el celular eso todavía no es posible: se explica y se ofrece la demo.
+  function connectNow() {
+    start(async () => {
+      setError(null);
+      setHint(null);
+      const status = await pairingStatusAction(code ?? "");
+      if (status === "connected" || status === "approved") return setStep(3);
+      if (status === "missing") return setExpired(true);
+      setHint(
+        "Todavía no detectamos tu agente. La conexión real con Claude y ChatGPT aún no está disponible (necesita una URL pública con HTTPS). Mientras tanto, toca «Ver demo» para ver cómo funciona.",
+      );
+    });
+  }
+
+  // «Ver demo»: sigue el recorrido completo como si el agente ya se hubiera conectado.
+  function viewDemo() {
+    start(async () => {
+      setError(null);
+      setHint(null);
+      const result = await confirmConnectionAction(code ?? "");
+      if (!result.ok) return setError(result.error);
+      setStep(3);
     });
   }
 
@@ -307,21 +334,15 @@ export function NewAgentFlow() {
             </section>
           )}
           {error && <Banner tone="error">{error}</Banner>}
-          <button
-            type="button"
-            disabled={pending || !code || expired}
-            onClick={() =>
-              start(async () => {
-                setError(null);
-                const result = await confirmConnectionAction(code ?? "");
-                if (!result.ok) return setError(result.error);
-                setStep(3);
-              })
-            }
-            className={`${secondaryButton} disabled:opacity-60`}
-          >
-            Ya lo agregué, continuar
-          </button>
+          {hint && <Banner tone="info">{hint}</Banner>}
+          <div className="mt-auto flex flex-col gap-3">
+            <button type="button" disabled={pending || !code || expired} onClick={connectNow} className={`${primaryButton} disabled:opacity-60`}>
+              {pending ? "Comprobando…" : "Conectar"}
+            </button>
+            <button type="button" disabled={pending || !code || expired} onClick={viewDemo} className={`${secondaryButton} disabled:opacity-60`}>
+              Ver demo
+            </button>
+          </div>
         </>
       )}
 
