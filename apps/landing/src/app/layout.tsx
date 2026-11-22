@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { IBM_Plex_Mono } from "next/font/google";
@@ -12,6 +14,7 @@ const sans = localFont({
   variable: "--font-schibsted",
 });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-plex-mono" });
+const hasBargain = existsSync(join(process.cwd(), "public/brand/bargain.otf"));
 
 export const metadata: Metadata = {
   title: `${projectName}: tarjetas de gasto para agentes de IA`,
@@ -22,7 +25,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" className={`${sans.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        {hasBargain && (
+          <style>{'@font-face{font-family:Bargain;src:url("/brand/bargain.otf") format("opentype");font-weight:400;font-display:swap}'}</style>
+        )}
+        {children}
+      </body>
     </html>
   );
 }
