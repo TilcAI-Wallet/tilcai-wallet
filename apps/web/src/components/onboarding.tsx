@@ -97,7 +97,7 @@ export function PasskeyFlow({ mode, hasSession }: { mode: "create" | "login"; ha
           placeholder="ej. ana.paz"
           disabled={busy}
           value={username}
-          onChange={(e) => setUsername(e.target.value.replace(/s/g, ""))}
+          onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
           onBlur={() => setTouched(true)}
           error={touched && !parsed.ok ? parsed.error : null}
         />
