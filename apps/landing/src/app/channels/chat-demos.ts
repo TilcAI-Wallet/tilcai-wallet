@@ -13,7 +13,7 @@ export const chatDemos = [
       { from: "you", text: "¿Cuánto le queda a Codex?", time: "09:41" },
       { from: "wallet", text: `Saldo de la tarjeta: ${purchase.balance}.\nDisponible para gastar: ${purchase.remaining}.`, time: "09:41" },
       { from: "you", text: "Muéstrame la última compra.", time: "09:42" },
-      { from: "wallet", text: `${purchase.order} · ${purchase.payment}\nPago confirmado. Entrega verificada.`, time: "09:42" },
+      { from: "wallet", text: `${purchase.order} · ${purchase.payment}\nTransferencia confirmada en Stellar Testnet.`, time: "09:42" },
     ],
   },
   {
@@ -27,7 +27,7 @@ export const chatDemos = [
       { from: "you", text: "Mi wallet", time: "09:41" },
       { from: "wallet", text: `Sesión vinculada: ${purchase.agent}.\nSaldo: ${purchase.balance}.`, time: "09:41" },
       { from: "you", text: "Ver recibo", time: "09:42" },
-      { from: "wallet", text: `${purchase.payment} · ${purchase.order}\nPermiso, pago y entrega confirmados.`, time: "09:42" },
+      { from: "wallet", text: `${purchase.payment} · ${purchase.order}\nStellar Testnet · Ledger ${purchase.ledger}`, time: "09:42" },
     ],
   },
 ] as const satisfies readonly ChatDemo[];

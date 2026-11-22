@@ -24,6 +24,6 @@ export const walkthroughSteps = [
     phase: "receipt",
     label: "Recibo",
     title: "Tú puedes verificarla.",
-    detail: "El recibo reúne el permiso, la orden, el pago y la evidencia de entrega.",
+    detail: "El recibo vincula el permiso y la orden con el pago. Puedes comprobar la transferencia en Stellar.",
   },
 ] as const satisfies readonly { phase: SessionPhase; label: string; title: string; detail: string }[];

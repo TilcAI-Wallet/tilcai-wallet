@@ -2,7 +2,7 @@
   display: none;
 }
 
-@media (min-width: 840px) {
+@media (min-width: 840px) and (min-height: 700px) and (prefers-reduced-motion: no-preference) {
   .particles {
     position: absolute;
     display: block;
@@ -12,6 +12,6 @@
     top: 50%;
     left: 38%;
     translate: 0 -50%;
-    opacity: .85;
+    opacity: .94;
   }
 }

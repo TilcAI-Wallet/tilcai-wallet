@@ -9,7 +9,7 @@ const receiptDetails = [
   ["Agente", demoPurchase.agent],
   ["Permiso", `Tope ${demoPurchase.limit}`],
   ["Orden", demoPurchase.order],
-  ["Entrega", "Verificada"],
+  ["Ledger", demoPurchase.ledger],
 ] as const;
 
 const reducedMotion = "(prefers-reduced-motion: reduce)";
@@ -27,7 +27,7 @@ export function PrintedReceipt() {
 
     const done = () => {
       setPrinting(false);
-      if (announce) setAnnouncement(`Recibo de ejemplo. Pago de ${amount}.`);
+      if (announce) setAnnouncement(`Pago de ${amount} en ${demoPurchase.network}.`);
     };
     if (window.matchMedia(reducedMotion).matches || !paper.current.animate) {
       done();
@@ -86,7 +86,7 @@ export function PrintedReceipt() {
       <div className={styles.ticketWindow}>
         <article className={styles.ticket} id="recibo" ref={paper} aria-labelledby="receipt-title">
           <h2 id="receipt-title">Recibo de compra</h2>
-          <p className={styles.testNetwork}>{demoPurchase.network} · Ejemplo</p>
+          <p className={styles.testNetwork}>{demoPurchase.network}</p>
           <dl className={styles.ticketItems}>
             {receiptDetails.map(([label, value]) => (
               <div className={styles.ticketRow} key={label}>
@@ -97,8 +97,9 @@ export function PrintedReceipt() {
           </dl>
           <p className={styles.total}>
             <span>Pago confirmado</span>
-            <data value="5.00">{amount}</data>
+            <data value={demoPurchase.paymentValue}>{amount}</data>
           </p>
+          <a className={styles.ledgerLink} href={demoPurchase.explorerUrl}>Ver transferencia en Stellar ↗</a>
         </article>
       </div>
       <button

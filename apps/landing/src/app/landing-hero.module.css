@@ -239,6 +239,15 @@
   white-space: nowrap;
 }
 
+.ledgerLink {
+  display: inline-block;
+  margin-top: .5rem;
+  color: #493268;
+  font-size: .74rem;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+
 .replay {
   justify-content: center;
   gap: .48rem;

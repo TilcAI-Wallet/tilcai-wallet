@@ -1,7 +1,7 @@
 .chat {
-  width: min(100%, 29rem);
-  border-radius: 16px;
-  box-shadow: 0 22px 50px #0006;
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   color: var(--chat-ink);
   background: var(--chat-surface);
@@ -16,6 +16,7 @@
   --chat-in: #213139;
   --chat-out: #095345;
   --chat-accent: #89e9be;
+  --composer: #253339;
   --chat-preview: url("/brand/chat-whatsapp.svg");
   --chat-brand: url("/brand/channel-whatsapp.svg");
 }
@@ -28,6 +29,7 @@
   --chat-in: #fff;
   --chat-out: #effdde;
   --chat-accent: #176b9e;
+  --composer: #eff4f7;
   --chat-preview: url("/brand/chat-telegram.svg");
   --chat-brand: url("/brand/channel-telegram.svg");
 }
@@ -36,8 +38,8 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: .65rem;
-  padding: .65rem .8rem;
+  gap: .5rem;
+  padding: .54rem .62rem;
   background: var(--chat-header);
   font-size: .93rem;
 }
@@ -46,31 +48,45 @@
 .brand { width: 1.18rem; aspect-ratio: 1; background: var(--chat-accent); mask: var(--chat-brand) center / contain no-repeat; }
 .avatar {
   display: block;
-  width: 36px;
+  width: clamp(26px, 3vw, 37px);
   aspect-ratio: 1;
   border-radius: 12px;
   background: #c8a6ff url("/brand/wallet-glyph.svg") center / 60% no-repeat;
 }
 
+.thread {
+  display: flex;
+  flex-direction: column;
+  background: var(--chat-preview) repeat, var(--chat-surface);
+  background-size: 127px 127px;
+  padding: .42rem .5rem .55rem;
+  overflow: hidden;
+}
+.day {
+  align-self: center;
+  padding: .2rem .55rem;
+  border-radius: 20px;
+  background: var(--chat-header);
+  color: var(--chat-muted);
+  font-size: .66rem;
+}
 .messages {
   display: grid;
-  gap: .55rem;
-  padding: .85rem .9rem;
-  background: var(--chat-preview) repeat, var(--chat-surface);
-  background-size: 153px 153px;
+  gap: .46rem;
   position: relative;
+  margin-top: auto;
 }
 .bubble {
   display: grid;
   gap: .18rem;
   justify-self: start;
-  max-width: min(92%, 24rem);
-  padding: .52rem .65rem .34rem;
+  max-width: 94%;
+  padding: .44rem .55rem .29rem;
   border-radius: 12px 12px 12px 4px;
   background: var(--chat-in);
   box-shadow: 0 2px 5px #0002;
   line-height: 1.3;
-  font-size: clamp(.76rem, 1.15vw, .91rem);
+  font-size: clamp(.66rem, 1vw, .87rem);
 }
 .bubble[data-from="you"] {
   justify-self: end;
@@ -87,15 +103,19 @@
   color: var(--chat-muted);
 }
 .meta svg { color: var(--chat-accent); }
-.footer {
+.composer {
   display: flex;
   align-items: center;
-  gap: .4rem;
-  padding: .55rem .87rem;
+  gap: .35rem;
+  padding: .5rem;
   background: var(--chat-header);
   color: var(--chat-muted);
   font-size: .69rem;
 }
+.composer div { min-width: 0; flex: 1; display: flex; align-items: center; gap: .33rem; background: var(--composer); padding: .46rem .44rem; border-radius: 13px; }
+.composer div span { flex: 1; }
+.composer svg { flex: none; }
+.mic { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; border-radius: 50%; background: var(--chat-accent); color: var(--chat-header); }
 .typing {
   position: absolute;
   left: 1rem;
