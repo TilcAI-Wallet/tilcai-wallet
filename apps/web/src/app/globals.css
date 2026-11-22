@@ -3,10 +3,13 @@
 @theme {
   --color-accent: #6024e8;
   --color-muted: #60596a;
+  --color-surface: #fcfaf7;
+  --color-line: #d8d0c8;
 }
 
 body {
   color: #211b2a;
   background: #f3f1ed;
   font-family: system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }

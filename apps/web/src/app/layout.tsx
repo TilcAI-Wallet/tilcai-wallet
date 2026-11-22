@@ -1,11 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { projectName } from "@tilcai-wallet/config";
+import { palette, projectName } from "@tilcai-wallet/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: projectName,
   description: "Control y evidencia para las compras de agentes.",
+  appleWebApp: { capable: true, title: "TilcAI", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  themeColor: palette.violet,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
