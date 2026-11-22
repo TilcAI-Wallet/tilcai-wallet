@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useTransition } from "react";
-import { connectAgentAction } from "@/app/actions";
+import { useRouter } from "next/navigation";
+import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { approvePairingAction, createPairingAction, pairingStatusAction, rejectPairingAction } from "@/app/actions";
 import { agentClients, type AgentClient } from "@/lib/ledger";
 import { verifyPasskey } from "@/lib/passkey";
 import { Icon, type IconName } from "./Icon";
@@ -12,22 +13,22 @@ import { Banner, Field } from "./ui";
 
 type Step = 1 | 2 | 3 | 4;
 
-const clients: { id: AgentClient; icon: IconName; alias: string; config: (code: string) => string; where: string }[] = [
+const clients: { id: AgentClient; icon: IconName; alias: string; config: (url: string) => string; where: string; app: string }[] = [
   {
     id: "claude",
     icon: "asterisk",
     alias: "Claude · Portátil",
-    where: "Abre la configuración MCP de Claude Code (archivo .mcp.json de tu proyecto).",
-    config: (code) =>
-      `{\n  "mcpServers": {\n    "tilcai-wallet": {\n      "command": "pnpm",\n      "args": ["--filter", "@tilcai-wallet/mcp", "start"],\n      "env": { "TILCAI_PAIRING_CODE": "${code}" }\n    }\n  }\n}`,
+    where: "Abre una terminal en tu proyecto y pega el comando de arriba (Claude Code).",
+    config: (url) => `claude mcp add --transport http tilcai-wallet ${url}`,
+    app: "En la app o la web de Claude: Ajustes → Conectores → Añadir conector personalizado, y pega la URL.",
   },
   {
     id: "codex",
     icon: "hexagon",
     alias: "Codex · Escritorio",
-    where: "Abre la configuración MCP de Codex (archivo ~/.codex/config.toml).",
-    config: (code) =>
-      `[mcp_servers.tilcai-wallet]\ncommand = "pnpm"\nargs = ["--filter", "@tilcai-wallet/mcp", "start"]\nenv = { TILCAI_PAIRING_CODE = "${code}" }`,
+    where: "Pega la configuración en ~/.codex/config.toml (Codex).",
+    config: (url) => `[mcp_servers.tilcai-wallet]\nurl = "${url}"`,
+    app: "En la app o la web de ChatGPT: Ajustes → Conectores → Modo desarrollador → Crear, y pega la URL.",
   },
 ];
 
@@ -38,13 +39,17 @@ const permissions = [
 ];
 
 const tile = "flex size-12 shrink-0 items-center justify-center rounded-2xl bg-accent text-ink";
+const noSubscribe = () => () => undefined;
 
-export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
+export function NewAgentFlow() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(1);
   const [clientId, setClientId] = useState<AgentClient>("claude");
   const [alias, setAlias] = useState(clients[0]!.alias);
   const [aliasError, setAliasError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"idle" | "ok" | "failed">("idle");
+  const [code, setCode] = useState<string>();
+  const [expired, setExpired] = useState(false);
+  const [copied, setCopied] = useState<"idle" | "config" | "url" | "failed">("idle");
   const [help, setHelp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -52,13 +57,25 @@ export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
   const [pending, start] = useTransition();
   const client = clients.find((c) => c.id === clientId)!;
   const clientName = agentClients[clientId].name;
+  const origin = useSyncExternalStore(noSubscribe, () => window.location.origin, () => "");
+  const url = `${origin}/api/mcp/${code ?? ""}`;
+  const isLocal = /^https?:\/\/(localhost|127\.|\[::1\])/.test(origin);
 
-  // shortcut: la conexión del agente se simula con una espera; con el MCP real llegará por sondeo o notificación del servidor.
+  // Espera la conexión real del agente: el servidor marca la vinculación como «conectada» cuando el cliente MCP la usa.
   useEffect(() => {
-    if (step !== 2) return;
-    const timer = setTimeout(() => setStep(3), 7000);
-    return () => clearTimeout(timer);
-  }, [step]);
+    if (step !== 2 || !code || expired) return;
+    let alive = true;
+    const timer = setInterval(async () => {
+      const status = await pairingStatusAction(code);
+      if (!alive) return;
+      if (status === "connected" || status === "approved") setStep(3);
+      else if (status === "missing") setExpired(true);
+    }, 1500);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [step, code, expired]);
 
   function choose(next: AgentClient) {
     const previous = clients.find((c) => c.id === clientId)!;
@@ -67,11 +84,21 @@ export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
     if (alias === previous.alias) setAlias(clients.find((c) => c.id === next)!.alias);
   }
 
-  function next() {
+  function openPairing() {
     const clean = alias.trim();
     if (clean.length < 2 || clean.length > 30) return setAliasError("El alias debe tener entre 2 y 30 caracteres.");
     setAliasError(null);
-    setStep(2);
+    start(async () => {
+      const result = await createPairingAction(clientId, alias, code);
+      if (!result.ok) {
+        setStep(1);
+        return setAliasError(result.error);
+      }
+      setCode(result.id);
+      setExpired(false);
+      setCopied("idle");
+      setStep(2);
+    });
   }
 
   function approve() {
@@ -81,11 +108,27 @@ export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
       if (!check.ok && check.reason === "cancelled") return setError("Cancelaste la verificación. No se aprobó nada.");
       if (!check.ok && check.reason === "error") return setError("No pudimos verificar tu passkey. No se aprobó nada.");
       if (!check.ok || check.simulated) setNote("La verificación con passkey se simuló en este dispositivo.");
-      const result = await connectAgentAction(clientId, alias);
+      const result = await approvePairingAction(code ?? "");
       if (!result.ok) return setError(result.error);
       setAgentId(result.id);
       setStep(4);
     });
+  }
+
+  function reject() {
+    start(async () => {
+      if (code) await rejectPairingAction(code);
+      router.push("/wallet/agents");
+    });
+  }
+
+  async function copy(value: string, what: "config" | "url") {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(what);
+    } catch {
+      setCopied("failed");
+    }
   }
 
   const back = step === 1 || step === 4 ? undefined : () => setStep((step - 1) as Step);
@@ -169,8 +212,8 @@ export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
             />
           </div>
           <div className="mt-auto">
-            <button type="button" onClick={next} className={`${primaryButton} gap-2`}>
-              Continuar
+            <button type="button" disabled={pending} onClick={openPairing} className={`${primaryButton} gap-2 disabled:opacity-60`}>
+              {pending ? "Preparando…" : "Continuar"}
               <Icon name="arrow" size={24} />
             </button>
           </div>
@@ -191,18 +234,7 @@ export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
               <h2 className="text-xl">Servidor MCP de Tilcai</h2>
             </div>
             <p className="text-base text-ivory/80">Agrega este servidor en {clientName} para vincular tu agente con tu wallet.</p>
-            <button
-              type="button"
-              className={`${primaryButton} gap-2`}
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(client.config(pairingCode));
-                  setCopied("ok");
-                } catch {
-                  setCopied("failed");
-                }
-              }}
-            >
+            <button type="button" className={`${primaryButton} gap-2`} onClick={() => copy(client.config(url), "config")}>
               <Icon name="copy" size={22} />
               Copiar configuración
             </button>
@@ -210,29 +242,50 @@ export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
               <Icon name="external" size={22} />
               Ver instrucciones
             </button>
-            {copied === "ok" && <Banner tone="ok">Configuración copiada.</Banner>}
+            {copied === "config" && <Banner tone="ok">Configuración copiada.</Banner>}
+            {copied === "url" && <Banner tone="ok">URL copiada.</Banner>}
             {copied === "failed" && <Banner tone="error">No se pudo copiar. Abre «Ver instrucciones» y cópiala a mano.</Banner>}
             {help && (
-              <div className="flex flex-col gap-2 rounded-2xl border border-ivory/30 p-3 text-base text-ivory/85">
+              <div className="flex flex-col gap-3 rounded-2xl border border-ivory/30 p-3 text-base text-ivory/85">
                 <ol className="flex flex-col gap-1.5">
                   <li>1. {client.where}</li>
-                  <li>2. Pega la configuración. Incluye tu código de un solo uso.</li>
-                  <li>3. Reinicia {clientName} y abre una sesión.</li>
-                  <li>4. Vuelve aquí: la conexión se detecta sola.</li>
+                  <li>2. Abre {clientName} y confirma que ve «tilcai-wallet» entre sus herramientas MCP.</li>
+                  <li>3. Vuelve aquí: la conexión se detecta sola.</li>
                 </ol>
-                <pre className="font-data overflow-x-auto rounded-xl bg-ivory/10 p-3 text-xs whitespace-pre">{client.config(pairingCode)}</pre>
+                <pre className="font-data overflow-x-auto rounded-xl bg-ivory/10 p-3 text-xs whitespace-pre-wrap break-all">{client.config(url)}</pre>
+                <p>{client.app}</p>
+                <button type="button" onClick={() => copy(url, "url")} className={`${secondaryButton} gap-2`}>
+                  <Icon name="copy" size={22} />
+                  Copiar solo la URL
+                </button>
+                {isLocal && (
+                  <Banner tone="info">
+                    Estás en localhost: {clientName} en esta misma computadora sí puede conectarse. Para la app o la web de ChatGPT y Claude necesitas una URL pública con HTTPS
+                    (despliega la web o usa un túnel).
+                  </Banner>
+                )}
               </div>
             )}
           </section>
-          <section className="flex items-center gap-4 rounded-3xl border border-ivory/25 bg-surface p-4" role="status">
-            <span className="size-11 shrink-0 animate-spin rounded-full border-4 border-accent/25 border-t-accent motion-reduce:animate-none" aria-hidden="true" />
-            <div>
-              <h2 className="text-xl">Esperando conexión…</h2>
-              <p className="text-base text-ivory/80">Mantén {clientName} abierto y completa la conexión.</p>
-            </div>
-          </section>
+          {expired ? (
+            <section className="flex flex-col gap-3 rounded-3xl border border-ivory/60 p-4" role="alert">
+              <h2 className="text-xl">El código venció</h2>
+              <p className="text-base text-ivory/80">Los códigos duran 10 minutos y se usan una sola vez.</p>
+              <button type="button" disabled={pending} onClick={openPairing} className={`${primaryButton} disabled:opacity-60`}>
+                Generar código nuevo
+              </button>
+            </section>
+          ) : (
+            <section className="flex items-center gap-4 rounded-3xl border border-ivory/25 bg-surface p-4" role="status">
+              <span className="size-11 shrink-0 animate-spin rounded-full border-4 border-accent/25 border-t-accent motion-reduce:animate-none" aria-hidden="true" />
+              <div>
+                <h2 className="text-xl">Esperando conexión…</h2>
+                <p className="text-base text-ivory/80">Mantén {clientName} abierto y completa la conexión.</p>
+              </div>
+            </section>
+          )}
           <button type="button" onClick={() => setStep(3)} className="flex min-h-11 w-fit items-center self-center text-accent">
-            Simular que el agente se conectó
+            Continuar sin conectar (demo)
           </button>
         </>
       )}
@@ -278,7 +331,7 @@ export function NewAgentFlow({ pairingCode }: { pairingCode: string }) {
               <Icon name="fingerprint" size={26} />
               {pending ? "Esperando a tu dispositivo…" : "Aprobar con passkey"}
             </button>
-            <button type="button" onClick={() => setStep(2)} className={secondaryButton}>
+            <button type="button" disabled={pending} onClick={reject} className={secondaryButton}>
               Rechazar
             </button>
           </div>
