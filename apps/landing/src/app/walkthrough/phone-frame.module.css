@@ -1,0 +1,63 @@
+.device {
+  width: min(100%, clamp(13.5rem, 24vw, 17.2rem));
+  padding: 5px;
+  position: relative;
+  border-radius: 34px;
+  background: linear-gradient(142deg,#77747c,#24222a 17%,#050507 47%,#2f2839 77%,#74717a);
+  box-shadow: 11px 24px 35px #26183735, 2px 4px 10px #20132750, inset 0 0 0 1px #18151b;
+}
+
+.device::before {
+  content: "";
+  position: absolute;
+  width: 2px;
+  height: 42px;
+  top: 22%;
+  left: -1px;
+  border-radius: 2px;
+  background: #77717c;
+}
+
+.screen {
+  background: #121016;
+  color: #faf7fc;
+  border-radius: 29px;
+  min-height: clamp(24rem, 53vh, 30rem);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.system {
+  height: 35px;
+  padding: 0 11px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .62rem;
+  font-weight: 650;
+}
+
+.system i {
+  position: absolute;
+  width: 41px;
+  height: 11px;
+  top: 9px;
+  left: calc(50% - 20px);
+  border-radius: 12px;
+  background: #070609;
+}
+
+.system div { display: flex; gap: 3px; }
+.system svg { width: 10px; height: 10px; }
+.content { padding: 0 11px 16px; flex: 1; }
+.home { inline-size: 43%; height: 3px; background: #b7aebb; border-radius: 8px; margin: 0 auto 6px; }
+
+@media (max-width: 700px) {
+  .device { width: min(100%, 15.1rem); }
+  .screen { min-height: 22rem; }
+}
+
+@media (max-height: 785px) and (max-width: 700px) {
+  .screen { min-height: 19.6rem; }
+}

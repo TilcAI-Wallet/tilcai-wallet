@@ -1,0 +1,15 @@
+.receipt {
+  display: grid;
+  gap: .32rem;
+  padding: .8rem;
+  background: #f8f6ee;
+  color: #251d2c;
+  border-radius: 10px;
+  font-size: .7rem;
+}
+
+.receipt > strong { font-size: .97rem; }
+.receipt > span { color: #54475d; }
+.receipt dl { margin-block: .3rem; padding: .36rem 0; border-block: 1px dashed #ab9fac; }
+.receipt dl div { display: flex; justify-content: space-between; gap: .25rem; padding-block: .13rem; }
+.receipt p { display: flex; gap: .35rem; align-items: center; color: #1c613f; font-weight: 650; }

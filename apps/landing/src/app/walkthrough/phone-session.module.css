@@ -1,0 +1,17 @@
+.session { display: grid; gap: .7rem; }
+.title { display: grid; gap: .12rem; padding-block: .26rem .24rem; }
+.title span, .network { color: #c2b4d0; font-size: .65rem; }
+.title strong { font-size: .97rem; font-weight: 700; }
+.activity {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: .36rem;
+  align-items: center;
+  padding: .54rem .45rem;
+  border-block: 1px solid #ffffff16;
+  font-size: .64rem;
+}
+.activity > svg { color: #a7f3d0; }
+.activity small { display: block; color: #c2b4d0; font-size: .57rem; }
+.activity b { font-weight: 650; white-space: nowrap; letter-spacing: -.035em; }
+.network { display: flex; justify-content: center; }

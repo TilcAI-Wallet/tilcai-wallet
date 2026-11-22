@@ -1,0 +1,17 @@
+.particles {
+  display: none;
+}
+
+@media (min-width: 840px) {
+  .particles {
+    position: absolute;
+    display: block;
+    width: min(29%, 21rem);
+    height: auto;
+    aspect-ratio: 1;
+    top: 50%;
+    left: 38%;
+    translate: 0 -50%;
+    opacity: .85;
+  }
+}
