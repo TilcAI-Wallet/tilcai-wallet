@@ -10,6 +10,11 @@
   --color-muted: #f8f6ee99;
   --color-surface: #f8f6ee0f;
   --color-line: #e5e4eb26;
+
+  /* Curvas de movimiento: salida fuerte para entradas, entrada-salida para lo que se mueve en pantalla, curva de hoja tipo iOS. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 body {
@@ -23,18 +28,178 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ── Movimiento ──────────────────────────────────────────────────────────────────────────────────────────────────
+   Solo transform y opacity. Las entradas usan salida fuerte y duran menos de 300 ms; el contenido de cada pantalla
+   entra en cadena (45 ms entre bloques). Las animaciones de entrada omiten el fotograma final para no dejar un
+   `transform` activo (que convertiría al padre en contenedor de los elementos fijos). */
+
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+@keyframes enter-x {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--enter-x, 1) * 18px));
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Los bloques de una pantalla entran uno tras otro. Los elementos fijos (hojas, avisos) no participan.
+   `.swap` agrupa contenido que se cambia sin cambiar de pantalla (el panel de otra tarjeta): entra igual, y el contenedor no. */
+.enter-children > :not(.fixed),
+.swap > :not(.fixed) {
+  animation: enter 280ms var(--ease-out) both;
+}
+.enter-children > .swap {
+  animation: none;
+}
+:is(.enter-children, .swap) > :nth-child(2) { animation-delay: 45ms; }
+:is(.enter-children, .swap) > :nth-child(3) { animation-delay: 90ms; }
+:is(.enter-children, .swap) > :nth-child(4) { animation-delay: 135ms; }
+:is(.enter-children, .swap) > :nth-child(5) { animation-delay: 180ms; }
+:is(.enter-children, .swap) > :nth-child(6) { animation-delay: 225ms; }
+:is(.enter-children, .swap) > :nth-child(n + 7) { animation-delay: 270ms; }
+
+/* Titular de bienvenida: cada línea entra en su momento (pantalla de primera vez, puede ser más pausada). */
+.reveal-lines > span {
+  animation: enter 520ms var(--ease-out) both;
+}
+.reveal-lines > :nth-child(1) { animation-delay: 120ms; }
+.reveal-lines > :nth-child(2) { animation-delay: 230ms; }
+.reveal-lines > :nth-child(3) { animation-delay: 340ms; }
+
+/* Pasos del asistente: entran desde el lado al que se avanza o se retrocede. */
+.step-in > :not(.fixed) {
+  animation: enter-x 260ms var(--ease-out) both;
+}
+.step-in > :nth-child(2) { animation-delay: 40ms; }
+.step-in > :nth-child(3) { animation-delay: 80ms; }
+.step-in > :nth-child(4) { animation-delay: 120ms; }
+.step-in > :nth-child(n + 5) { animation-delay: 160ms; }
+
+/* Pulsación: respuesta inmediata en botones y enlaces (sin hover: en el celular el toque es la interacción). */
+:where(button:not(:disabled), a[href]) {
+  transition:
+    scale 140ms var(--ease-out),
+    background-color 180ms ease,
+    border-color 180ms ease,
+    color 180ms ease,
+    opacity 180ms ease;
+}
+:where(button:not(:disabled), a[href]):active {
+  scale: 0.97;
+}
+
+/* Barras de gasto: crecen desde cero al aparecer. */
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+.bar-grow {
+  transform-origin: left center;
+  animation: grow-x 700ms var(--ease-out) 150ms both;
+}
+
+/* Tarjetas: se reparten de abajo hacia arriba y un reflejo cruza la superficie una vez. */
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.97);
+  }
+}
+.card-deal {
+  animation: deal 420ms var(--ease-out) both;
+}
+@keyframes sheen {
+  from {
+    transform: translateX(-130%);
+  }
+  to {
+    transform: translateX(130%);
+  }
+}
+.card-sheen {
+  animation: sheen 1100ms var(--ease-in-out) 500ms both;
+}
+
+/* Ilustración de inicio: las fichas flotan apenas y las rayas de asombro destellan en cadena. */
+@keyframes float {
+  50% {
+    transform: translateY(-4px);
+  }
+}
+.float {
+  animation: float 5.5s ease-in-out infinite;
+}
+@keyframes spark {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+.spark {
+  transform-box: fill-box;
+  transform-origin: 0% 50%;
+  animation: spark 2.4s ease-in-out infinite;
+}
+
+/* Hoja de instalación y su fondo. */
 @keyframes sheet-in {
   from {
     transform: translateY(100%);
   }
 }
-
 .install-sheet {
-  animation: sheet-in 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: sheet-in 340ms var(--ease-drawer);
+}
+.install-backdrop {
+  animation: fade 220ms ease-out;
 }
 
+/* Movimiento reducido: sin desplazamientos ni bucles; se conserva el fundido, que ayuda a entender el cambio. */
 @media (prefers-reduced-motion: reduce) {
+  .enter-children > :not(.fixed),
+  .swap > :not(.fixed),
+  .step-in > :not(.fixed) {
+    animation: fade 200ms ease-out both;
+    animation-delay: 0ms;
+  }
+  .enter-children > .swap {
+    animation: none;
+  }
+  .reveal-lines > span {
+    animation: fade 200ms ease-out both;
+    animation-delay: 0ms;
+  }
+  .card-deal,
   .install-sheet {
+    animation: fade 200ms ease-out both;
+  }
+  .install-backdrop {
+    animation: fade 200ms ease-out;
+  }
+  :where(button:not(:disabled), a[href]):active {
+    scale: none;
+  }
+  .bar-grow,
+  .card-sheen,
+  .float,
+  .spark {
     animation: none;
   }
 }

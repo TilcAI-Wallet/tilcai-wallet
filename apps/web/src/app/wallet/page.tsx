@@ -4,7 +4,6 @@ import { ActivityRow } from "@/components/ActivityRow";
 import { Icon, type IconName } from "@/components/Icon";
 import { Lockup } from "@/components/Logo";
 import { getPrefs } from "@/lib/auth";
-import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { formatUsdc } from "@/lib/money";
 import { wallet } from "@/lib/wallet";
 import { demoCardId } from "@/lib/wallet-mock";
@@ -40,9 +39,6 @@ export default async function WalletHome() {
       <section>
         <h1 className="text-4xl tracking-tight">Hola, {firstName}</h1>
         <p className="text-base text-muted">{card.state === "active" ? "Tus agentes están trabajando." : "Tu agente está en pausa."}</p>
-        <div className="mt-2">
-          <SimulatedBadge simulated={session.simulated || card.simulated} />
-        </div>
       </section>
 
       <section aria-labelledby="balance" className="flex items-start justify-between gap-3 rounded-3xl bg-ivory p-5 text-ink">

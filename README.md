@@ -2,11 +2,66 @@
 
 > **Tarjetas de gasto para agentes de IA.** Fondeas una sesión, el agente compra dentro de los límites, tú controlas todo desde el celular y cada compra deja un recibo verificable en Stellar.
 
-**Para quién:** agencias de automatización con IA en La Paz, Bolivia, y freelancers que operan agentes para clientes. **Modelo:** suscripción mensual por agencia.
+[Landing](https://tilcai-wallet.vercel.app/) · [PWA](https://tilcai-wallet-pwa.vercel.app/) · [Contrato en Testnet](https://lab.stellar.org/r/testnet/contract/CDCSGJZCHL5SOYURXLZ6YZQGWIOFN3FDREKJ27LGPPPCFJRIPPLIVLT6) · [Pago de 0,50 USDC](https://stellar.expert/explorer/testnet/tx/0f624b09c43169743b81deacf956f3415dc5feef87ddb61fdd52f676a76143d8)
 
-**Estado** La base del monorepo incluye los canales, CI, pruebas de humo y un prototipo de política de gasto Soroban con un pago y rechazo verificados en Testnet; la compra integral permanece pendiente. La primera entrega integra web móvil y MCP con compra directa y recibo en **Stellar Testnet**. [Prioridades y dependencias](docs/roadmap.md) · [Checklist](#checklist-del-equipo)
+**Para quién:** agencias de automatización con IA en La Paz, Bolivia, y freelancers que operan agentes para clientes. **Precio previsto:** primera tarjeta gratis y US$4 al mes por cada tarjeta activa adicional. [Mercado y precio](#mercado-y-precio)
 
-**Almacenamiento elegido** Supabase Postgres para sesiones, órdenes, intentos y recibos. Supabase Storage privado para los archivos que custodie la wallet. Stellar confirma saldos, gastos y políticas. La integración está pendiente. [Decisión y alcance](docs/adr/003-supabase-persistence.md)
+**Estado:** el límite de gasto funciona en Stellar Testnet: un contrato Soroban confirmó un pago de 0,50 USDC y rechaza el siguiente por tope. La PWA y el servidor MCP están publicados con datos simulados. La compra integrada (API, worker y Postgres) está en desarrollo. [Qué funciona hoy](#qué-funciona-hoy) · [Prioridades](docs/roadmap.md)
+
+**Almacenamiento elegido:** Supabase Postgres para sesiones, órdenes, intentos y recibos. Supabase Storage privado para los archivos que custodie la wallet. Stellar confirma saldos, gastos y políticas. La integración está pendiente. [Decisión y alcance](docs/adr/003-supabase-persistence.md)
+
+---
+
+## Qué funciona hoy
+
+| Pieza | Estado | Evidencia o detalle |
+| --- | --- | --- |
+| Contrato de política Soroban v1 | **Stellar Testnet** | Limita activo, destinatario, monto por pago y gasto acumulado, y permite congelar. Desplegado en [`CDCSGJZC…PLIVLT6`](https://lab.stellar.org/r/testnet/contract/CDCSGJZCHL5SOYURXLZ6YZQGWIOFN3FDREKJ27LGPPPCFJRIPPLIVLT6). Pago y rechazo en [Evidencia en Testnet](#evidencia-en-testnet). |
+| Contrato v2: pago atado a destinatario y revisión de política | **Código y pruebas** | Fusionado en [#15](https://github.com/TilcAI-Wallet/tilcai-wallet/pull/15). Falta desplegar una instancia nueva. |
+| PWA · passkey | **Real en el dispositivo** | WebAuthn del navegador (Windows Hello, Touch ID, huella). El servidor todavía no verifica la firma. |
+| PWA · saldo, tarjeta, actividad, agentes, sesiones, avisos y congelación | **Simulado** | Datos de demostración guardados por la propia PWA. No consultan la red ni la API. |
+| PWA · recibo | **Mixto** | El hash y el ledger son los del pago real en Testnet. La orden y la entrega son simuladas. |
+| PWA · conexión MCP (`get_wallet_status`, `request_purchase`, `list_receipts`) | **Conexión real, compras simuladas** | Un cliente MCP se conecta de verdad con un código de un solo uso. Las compras no mueven fondos. [Detalle](apps/web/README.md#conectar-un-agente-de-verdad-mcp) |
+| MCP stdio (`get_card`, `create_order`, `get_order`, `get_receipt`) | **Probado con fixtures** | Usa la API v1 y su contrato de esquemas. La API real llega con [#12](https://github.com/TilcAI-Wallet/tilcai-wallet/pull/12). |
+| API v1, worker y Postgres | **En desarrollo** | [#12](https://github.com/TilcAI-Wallet/tilcai-wallet/pull/12): migraciones, RLS, idempotencia y worker. |
+| Aumento de tope aprobado con passkey y aplicado en la red | **Diseño** | Flujo definido en [Arquitectura](docs/architecture.md). Hoy la aprobación cambia solo el estado simulado. |
+| Evidencia de entrega del proveedor | **Diseño** | Proveedor de prueba descrito en [API v1 y entorno](docs/demo-api.md). |
+| Landing | **Publicada** | Recorrido ilustrativo de una compra. |
+| Extensión, Telegram, WhatsApp, CLI, TUI y app nativa | **Base** | Puntos de entrada que compilan, sin conexión a la API. |
+
+### Evidencia en Testnet
+
+| Qué | Dónde |
+| --- | --- |
+| Despliegue del contrato, ledger 5859014 | [Transacción](https://stellar.expert/explorer/testnet/tx/946742e70ee59e81f3267b725c11a0da16f04f183deaa706703eeef848595b16) |
+| Fondeo de 20 USDC de prueba | [Transacción](https://stellar.expert/explorer/testnet/tx/1437898559b9749b77ad2152db62eea2b09065255a7b0e68105d80870f38ed82) |
+| Pago de 0,50 USDC dentro del tope, ledger 5859035 | [Transacción](https://stellar.expert/explorer/testnet/tx/0f624b09c43169743b81deacf956f3415dc5feef87ddb61fdd52f676a76143d8) |
+| Rechazo de un pago que supera el tope | Simulación pública: `spend(1)` devuelve `Error(Contract, #2)` (`LimitExceeded`). Verificado el 22 de noviembre de 2026 en el ledger 5867860. |
+
+El rechazo no envía una transacción: Soroban lo detiene en la simulación, antes de cobrar comisión. Cualquiera puede repetirlo con su propia identidad de Testnet, sin las claves del agente, porque la simulación no exige firmas:
+
+```sh
+stellar contract invoke --network testnet --source <tu-identidad> --send no \
+  --id CDCSGJZCHL5SOYURXLZ6YZQGWIOFN3FDREKJ27LGPPPCFJRIPPLIVLT6 -- policy
+# spent 5000000 = limit 5000000: el tope de 0,50 USDC está agotado
+stellar contract invoke --network testnet --source <tu-identidad> --send no \
+  --id CDCSGJZCHL5SOYURXLZ6YZQGWIOFN3FDREKJ27LGPPPCFJRIPPLIVLT6 -- spend --amount 1
+# Error(Contract, #2): LimitExceeded
+```
+
+Esta instancia ejecuta la versión 1 del contrato. [Interfaz y pendientes del contrato](contracts/soroban/README.md)
+
+---
+
+## Mercado y precio
+
+| | |
+| --- | --- |
+| **Clientes posibles** | Unas 250 agencias y freelancers de automatización con IA en La Paz y unas 800 en Bolivia. |
+| **Cómo se calculó** | SEPREC registra 398.131 unidades económicas a noviembre de 2025 y La Paz concentra el 30,9 %. En La Paz eso da unas 5.410 de información y comunicaciones y 10.815 de servicios profesionales y técnicos. Suponemos que un 40 % de las primeras son software y consultoría TI y un 8 % de las segundas son publicidad y marketing: unos 3.000 negocios digitales. Si un 8 % vende automatización con IA y compra datos o APIs para clientes, quedan unas 250. [SEPREC, noviembre de 2025](https://www.seprec.gob.bo/wp-content/uploads/2025/12/Informacion-ESTADISTICA-WEB-NOV_v1.pdf) |
+| **Precio previsto** | Primera tarjeta gratis. Cada tarjeta activa adicional cuesta US$4 al mes. Una tarjeta está activa si tuvo saldo o alguna compra en el mes. |
+| **Ejemplo** | Una agencia con 4 agentes paga US$12 al mes. Con 250 agencias en La Paz, el techo es de unos US$36.000 al año. |
+| **Por validar** | Los dos porcentajes del cálculo, el precio y el número de tarjetas por agencia se confirman en entrevistas con agencias de La Paz. |
 
 ---
 
@@ -111,99 +166,12 @@ Todos los comandos se ejecutan **desde la raíz** del repo.
 
 ## Cómo contribuir
 
-1. Elige una tarea del checklist y crea una rama desde `main`.
+1. Elige una tarea de las [prioridades](docs/roadmap.md) o de los [issues](https://github.com/TilcAI-Wallet/tilcai-wallet/issues) y crea una rama desde `main`.
 2. Trabaja solo en tu módulo con `pnpm --filter @tilcai-wallet/<módulo> …`.
 3. Ejecuta `pnpm check` antes de subir.
 4. Abre un PR. CI corre el workspace y los contratos.
 
 ¿Cambias un endpoint? Primero `api-contracts`, luego la API, luego el SDK y al final el cliente. Guía completa en [CONTRIBUTING](CONTRIBUTING.md).
-
----
-
-## Checklist del equipo
-
-El [orden de integración](docs/roadmap.md) indica qué desbloquea cada entrega. Acordar primero el entorno y los esquemas, iniciar contratos e identidad en paralelo y preparar web móvil y MCP con datos de prueba.
-
-<details open>
-<summary><b>0. Base de desarrollo</b> · 3/4</summary>
-
-- [x] Crear workspace pnpm con dependencias fijadas y un único lockfile JavaScript.
-- [x] Preparar apps, adaptadores, API, worker, paquetes, Rust, comandos por módulo y CI.
-- [x] Agregar pruebas de humo de salud y MCP, y un test del contrato base.
-- [ ] Definir entornos, credenciales de testnet, activos y responsables mediante PR.
-
-</details>
-
-<details>
-<summary><b>1. Autoridad, API y persistencia</b> · 0/7</summary>
-
-- [ ] Modelar usuarios, tenants, sesiones lógicas, credenciales, tarjetas, políticas y recuperaciones.
-- [ ] Implementar alta, respaldo, WebAuthn, scopes, cierre y rotación.
-- [ ] Implementar intención de vínculo y fondeo con enlace de uso único.
-- [ ] Preparar Supabase Postgres para local y Testnet con migraciones, roles mínimos y RLS en tablas de tenant.
-- [ ] Persistir órdenes, intentos, idempotencia, retenciones, outbox e inbox. Probar la contención de API y worker.
-- [ ] Versionar OpenAPI y esquemas, autorizar por objeto y proyectar el estado confirmado.
-- [ ] Aislar el firmante delegado y medir despliegue y restauración de subcuentas.
-
-</details>
-
-<details>
-<summary><b>2. Compra directa y recibo</b> · 0/6</summary>
-
-- [ ] Confirmar la cuenta de contrato, factory, activo de prueba y proveedor.
-- [ ] Limitar activo, destino, monto, vigencia y gasto acumulado. Probar el rechazo directo en Soroban.
-- [ ] Implementar cotización, simulación de registro, firma aislada, simulación de verificación final, envío y conciliación por hash.
-- [ ] Conservar el pedido ante resultado incierto, cotización vencida o rechazo de presupuesto.
-- [ ] Registrar evidencia autenticada de entrega y emitir un recibo con ID estable.
-- [ ] Reconciliar eventos, cursor, entrega tardía, duplicados y costo. Probar reinicios antes y después del envío.
-
-</details>
-
-<details>
-<summary><b>3. Primera integración · web móvil y MCP stdio</b> · 0/5</summary>
-
-- [ ] Mostrar saldo distinguido del disponible, centro de sesiones, tarjetas y extracto.
-- [ ] Implementar herramientas para consultar presupuesto, pedir una compra, solicitar aumento y buscar recibo.
-- [ ] Aprobar el aumento con passkey y retomar la misma orden tras confirmar y revalidar.
-- [ ] Congelar, reactivar, revocar y devolver remanente con estados de confirmación.
-- [ ] Reproducir los dos pagos y los rechazos del [guion de demo](docs/demo.md).
-
-</details>
-
-<details>
-<summary><b>4. Canales adicionales · P1 y P2</b> · 0/6</summary>
-
-- [ ] **Móvil.** Confirmar compilaciones iOS/Android, enlaces verificados, passkeys y notificaciones.
-- [ ] **Extensión.** Revisar permisos por origen, mensajes, expiración, revocación y Chrome/Edge.
-- [ ] **MCP remoto.** Integrar Streamable HTTP y validar autenticación, scopes y cada cliente.
-- [ ] **Telegram.** Validar bot y Mini App, vínculo, avisos y retorno al panel seguro.
-- [ ] **CLI/TUI.** Añadir alta autorizada, estado de sesión, consultas y recibos.
-- [ ] **WhatsApp (P2).** Verificar compatibilidad del caso con Meta, plantillas y webhooks.
-
-</details>
-
-<details>
-<summary><b>5. Pruebas operativas y piloto</b> · 0/5</summary>
-
-- [ ] Probar aislamiento de tenants, dos tarjetas independientes y rotación sin reiniciar gasto.
-- [ ] Probar límites, revocación, resultados ambiguos, protección contra duplicados y retorno de fondos.
-- [ ] Evaluar x402 y MPP con la smart account y capacidades de fondeo mediante rutas validadas.
-- [ ] Medir costo, tiempo de conciliación, disponibilidad y disposición a pagar con agencias y freelancers.
-- [ ] Registrar demo, hashes, resultados y estado por canal. Probar restauración, custodia y operación antes de usar fondos reales.
-
-</details>
-
-<details>
-<summary><b>I+D. Autorización poscuántica en Stellar Testnet</b> · investigación en curso</summary>
-
-- [x] Documentar el alcance de CAP-87 y confirmar Protocolo 30 en Testnet.
-- [ ] Probar SDK y CLI compatibles y una autorización ML-DSA-44 en una subcuenta aislada.
-- [ ] Registrar pago de 0,50, rechazos de contrato y comparación con autorización clásica en Soroban.
-- [ ] Conciliar la evidencia y mostrar el alcance en el recibo experimental.
-
-[Tarea delegable](docs/research/post-quantum.md#tarea-delegable)
-
-</details>
 
 ---
 

@@ -1,6 +1,8 @@
+import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import { projectName } from "@tilcai-wallet/config";
 import { PrintedReceipt } from "./printed-receipt";
+import { walletUrl } from "./project-footer";
 import styles from "./landing-hero.module.css";
 
 export function LandingHeader() {
@@ -33,12 +35,18 @@ export function LandingHero() {
             <span>Tu agente compra.</span>
             <span>Tú pones el límite.</span>
           </h1>
-          <a className={styles.primary} href="#como-funciona">
-            Cómo funciona
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 5v14m-5-5 5 5 5-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
+          <div className={styles.actions}>
+            <a className={styles.primary} href={walletUrl}>
+              Probar la demo
+              <ArrowUpRight size={16} strokeWidth={1.75} aria-hidden="true" />
+            </a>
+            <a className={styles.secondary} href="#como-funciona">
+              Cómo funciona
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5v14m-5-5 5 5 5-5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
+          </div>
         </div>
 
         <figure className={styles.artifact}>

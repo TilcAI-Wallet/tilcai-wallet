@@ -2,7 +2,6 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { ActivityRow } from "@/components/ActivityRow";
 import { FreezeButton } from "@/components/actions";
-import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { StatusPill } from "@/components/StatusPill";
 import { Page, PageHeader } from "@/components/ui";
 import { formatUsdc } from "@/lib/money";
@@ -29,9 +28,6 @@ export default async function Cards() {
         <p className="text-base text-muted">
           {session.owner} · {session.tenant}
         </p>
-        <div className="mt-1">
-          <SimulatedBadge simulated={session.simulated || card.simulated} />
-        </div>
       </PageHeader>
 
       <section className="rounded-3xl border border-line bg-surface p-5" aria-labelledby="card-name">

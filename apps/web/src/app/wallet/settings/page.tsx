@@ -1,6 +1,6 @@
 import { projectVersion } from "@tilcai-wallet/config";
 import { LogoutButton, PrefToggle, ResetButton } from "@/components/actions";
-import { Banner, Page, PageHeader } from "@/components/ui";
+import { Page, PageHeader } from "@/components/ui";
 import { getPrefs } from "@/lib/auth";
 
 const group = "divide-y divide-line overflow-hidden rounded-3xl border border-line bg-surface";
@@ -41,7 +41,6 @@ export default async function SettingsPage() {
         <h2 id="demo" className="text-2xl">
           Demo
         </h2>
-        <Banner tone="info">Esta wallet funciona con datos simulados en memoria: se pierden al reiniciar el servidor.</Banner>
         <ResetButton />
         <LogoutButton />
       </section>

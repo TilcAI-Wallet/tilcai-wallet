@@ -27,6 +27,12 @@ export function store(): Store {
   }
   const current = shared.__tilcaiStore!;
   current.pairings ??= []; // un estado guardado antes de existir las vinculaciones
+  const themes = ["accent", "ivory", "ink"] as const;
+  current.agents.forEach((agent, index) => {
+    const inferred = agent.id === "agt_codex" || agent.role.includes("OpenAI") ? "chatgpt" : agent.role.includes("Anthropic") ? "claude" : undefined;
+    agent.brand = inferred ?? agent.brand ?? "tilcai"; // estado guardado antes de existir las tarjetas con logo
+    agent.theme ??= themes[index % 3]!;
+  });
   return current;
 }
 

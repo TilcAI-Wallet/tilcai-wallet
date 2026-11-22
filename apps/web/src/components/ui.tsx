@@ -70,5 +70,5 @@ export function ListRow({ href, icon, title, detail, value }: { href: string; ic
 }
 
 export const Page = ({ children }: { children: ReactNode }) => (
-  <main className="mx-auto flex max-w-md flex-col gap-5 px-5 pt-[max(1.25rem,env(safe-area-inset-top))]">{children}</main>
+  <main className="enter-children mx-auto flex max-w-md flex-col gap-5 px-5 pt-[max(1.25rem,env(safe-area-inset-top))]">{children}</main>
 );

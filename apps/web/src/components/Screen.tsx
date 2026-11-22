@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 /** Contenedor móvil común a las pantallas de entrada. */
 export function Screen({ children }: { children: ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-4 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+    <main className="enter-children mx-auto flex min-h-dvh max-w-md flex-col gap-4 px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       {children}
     </main>
   );

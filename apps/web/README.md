@@ -11,9 +11,9 @@ pnpm --filter @tilcai-wallet/web dev     # http://localhost:3000
 
 Los scripts usan Webpack. En la verificación en Windows, el worker de PostCSS de Turbopack se cerró antes de conectarse al compilador.
 
-## Datos simulados
+## Datos de demostración
 
-Mientras no exista la Wallet API, las páginas leen un cliente simulado (`src/lib/wallet.ts` + `src/lib/wallet-mock.ts`) y lo etiquetan como **Datos simulados**. Escenario: tarjeta Codex · Portátil con 20,00 USDC y tope 0,50. Tras el pago de 0,50 quedan 19,50 y el agente dispone de 0,00.
+Mientras no exista la Wallet API, las páginas leen un cliente de demostración (`src/lib/wallet.ts` + `src/lib/wallet-mock.ts`). Escenario: tarjeta Codex · Portátil con 20,00 USDC y tope 0,50. Tras el pago de 0,50 quedan 19,50 y el agente dispone de 0,00.
 
 ```sh
 curl -X POST http://localhost:3000/api/mock/pay     # pasa de "antes" a "después"

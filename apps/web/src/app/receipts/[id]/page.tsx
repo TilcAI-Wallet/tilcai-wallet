@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { StatusPill } from "@/components/StatusPill";
 import { formatUsdc } from "@/lib/money";
 import { WalletNotFoundError, wallet } from "@/lib/wallet";
@@ -40,9 +39,6 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl tracking-tight">{receipt.description}</h1>
         <p className="text-3xl">{formatUsdc(receipt.amount)}</p>
-        <div>
-          <SimulatedBadge simulated={receipt.simulated} />
-        </div>
       </header>
 
       <section className={section} aria-labelledby="pay">

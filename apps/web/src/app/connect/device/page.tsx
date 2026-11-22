@@ -1,7 +1,6 @@
 import { Lockup } from "@/components/Logo";
 import { DeviceLink } from "@/components/onboarding";
 import { Screen } from "@/components/Screen";
-import { SimulatedBadge } from "@/components/SimulatedBadge";
 
 export default function DevicePage() {
   return (
@@ -14,9 +13,6 @@ export default function DevicePage() {
         <p className="text-base text-ivory/75">Vincula esta sesión con un dispositivo que ya tenga tu wallet.</p>
       </section>
       <DeviceLink />
-      <div>
-        <SimulatedBadge simulated />
-      </div>
     </Screen>
   );
 }

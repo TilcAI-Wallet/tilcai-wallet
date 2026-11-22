@@ -1,6 +1,5 @@
 import { CopyAddress } from "@/components/flows";
 import { QrArt } from "@/components/QrArt";
-import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { Banner, Page, PageHeader } from "@/components/ui";
 import { demoAddress } from "@/lib/stellar";
 
@@ -13,9 +12,6 @@ export default function ReceivePage() {
         <QrArt seed={demoAddress} label="Código QR de tu dirección" />
       </div>
       <CopyAddress address={demoAddress} />
-      <div>
-        <SimulatedBadge simulated />
-      </div>
     </Page>
   );
 }

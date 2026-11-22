@@ -2,7 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { isOutgoing } from "@/components/ActivityRow";
-import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { Banner, Page, PageHeader } from "@/components/ui";
 import { formatUsdc } from "@/lib/money";
 import { wallet } from "@/lib/wallet";
@@ -23,7 +22,7 @@ export default async function ActivityDetail({ params }: { params: Promise<{ id:
     ["Red", "Stellar Testnet"],
     [item.kind === "funding" ? "Origen" : "Destino", item.counterparty ?? "—"],
   ];
-  if (item.txHash) rows.push(["Hash (simulado)", item.txHash]);
+  if (item.txHash) rows.push(["Hash", item.txHash]);
 
   return (
     <Page>
@@ -42,9 +41,6 @@ export default async function ActivityDetail({ params }: { params: Promise<{ id:
           Abrir recibo
         </Link>
       )}
-      <div>
-        <SimulatedBadge simulated />
-      </div>
     </Page>
   );
 }
