@@ -1,4 +1,4 @@
-import { available, createStore, payAgent, type Agent, type AgentSession, type Notice, type Store } from "./ledger.ts";
+import { agentsView, available, createStore, payAgent, type Agent, type AgentSession, type Notice, type Store } from "./ledger.ts";
 import { demoCardId, demoReceiptIds, demoReceipts, type Card, type Receipt, type Session } from "./wallet-mock.ts";
 
 export class WalletNotFoundError extends Error {}
@@ -45,7 +45,7 @@ export const wallet = {
     return store().notices;
   },
   async agents(): Promise<Agent[]> {
-    return store().agents;
+    return agentsView(store());
   },
   async sessions(): Promise<AgentSession[]> {
     return store().sessions;

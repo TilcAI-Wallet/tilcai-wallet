@@ -12,7 +12,21 @@ export type Notice = {
   /** Solicitud de aumento de tope del agente, pendiente de decisión del dueño. */
   request?: { extra: string; status: "pending" | "approved" | "rejected" };
 };
-export type Agent = { id: string; name: string; role: string; paused: boolean; linkedCard: boolean };
+export type Agent = {
+  id: string;
+  name: string;
+  role: string;
+  icon: "agent" | "bars";
+  paused: boolean;
+  linkedCard: boolean;
+  /** Código de su tarjeta. */
+  card: string;
+  /** Tope acumulado, gastado y máximo por compra, en unidades atómicas. */
+  limit: string;
+  spent: string;
+  maxPerPurchase: string;
+};
+export type AgentStatus = "active" | "paused" | "limit";
 export type AgentSession = { id: string; agentId: string; title: string; state: "active" | "ended"; startedAt: string };
 export type CardState = "active" | "frozen";
 
@@ -48,8 +62,10 @@ export function createStore(now = new Date("2026-11-21T20:00:00.000Z")): Store {
       { id: "ntf_request", title: "Codex pide más tope", body: "Codex · Portátil solicita subir su tope acumulado en 0,50 USDC para seguir comprando.", at, read: false, request: { extra: usdc(0, 50).toString(), status: "pending" } },
     ],
     agents: [
-      { id: codexAgentId, name: "Codex · Portátil", role: "Compra informes de mercado", paused: false, linkedCard: true },
-      { id: "agt_seo", name: "Agente SEO", role: "Compra de datos de palabras clave", paused: true, linkedCard: false },
+      // Los montos de Codex se leen del estado de su tarjeta (ver `agentsView`); aquí solo son el valor inicial.
+      { id: codexAgentId, name: "Codex · Portátil", role: "Compra informes de mercado", icon: "agent", paused: false, linkedCard: true, card: "AG-7K2Q", limit: usdc(0, 50).toString(), spent: "0", maxPerPurchase: usdc(0, 50).toString() },
+      { id: "agt_seo", name: "Agente SEO", role: "Compra datos de palabras clave", icon: "agent", paused: true, linkedCard: false, card: "SEO-T482", limit: usdc(50).toString(), spent: usdc(12).toString(), maxPerPurchase: usdc(5).toString() },
+      { id: "agt_analytics", name: "Agente Analítica", role: "APIs, dashboards y reportes", icon: "bars", paused: false, linkedCard: false, card: "AN-114C", limit: usdc(50).toString(), spent: usdc(50).toString(), maxPerPurchase: usdc(10).toString() },
     ],
     sessions: [
       { id: "ses_codex", agentId: codexAgentId, title: "Informe de mercado", state: "active", startedAt: at },
@@ -64,6 +80,16 @@ export function available(store: Store): bigint {
   if (store.cardState !== "active" || store.sessionState !== "active") return 0n;
   return store.cap > store.spent ? store.cap - store.spent : 0n;
 }
+
+/** Estado que ve la persona: en pausa, con el tope agotado o activo. */
+export function agentStatus(agent: Agent): AgentStatus {
+  if (agent.paused) return "paused";
+  return BigInt(agent.spent) >= BigInt(agent.limit) ? "limit" : "active";
+}
+
+/** Agentes con los montos de Codex tomados de su tarjeta, para que las dos pantallas coincidan. */
+export const agentsView = (store: Store): Agent[] =>
+  store.agents.map((agent) => (agent.id === codexAgentId ? { ...agent, limit: store.cap.toString(), spent: store.spent.toString() } : agent));
 
 const nextId = (store: Store, prefix: string) => `${prefix}_${++store.counter}`;
 const fakeHash = (seed: number) => Array.from({ length: 8 }, (_, i) => ((seed * 2654435761 + i * 40503) >>> 0).toString(16).padStart(8, "0")).join("");

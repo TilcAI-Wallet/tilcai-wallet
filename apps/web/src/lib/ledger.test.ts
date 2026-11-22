@@ -1,6 +1,6 @@
 import { equal, throws } from "node:assert/strict";
 import { test } from "node:test";
-import { available, createStore, fund, LedgerError, payAgent, resolveRequest, setAgentPaused, setCodexSession, transfer, codexAgentId } from "./ledger.ts";
+import { agentsView, agentStatus, available, createStore, fund, LedgerError, payAgent, resolveRequest, setAgentPaused, setCodexSession, transfer, codexAgentId } from "./ledger.ts";
 
 const now = new Date("2026-11-22T10:00:00.000Z");
 
@@ -43,4 +43,18 @@ test("pausing the agent or ending the session removes the agent's spending power
   equal(available(store), 0n);
   setCodexSession(store, true);
   equal(available(store), 5_000_000n);
+});
+
+test("agent status: Codex follows its card, the others are paused or at their limit", () => {
+  const store = createStore();
+  const status = () => Object.fromEntries(agentsView(store).map((agent) => [agent.id, agentStatus(agent)]));
+  equal(status()[codexAgentId], "active");
+  equal(status().agt_seo, "paused");
+  equal(status().agt_analytics, "limit");
+  payAgent(store, now);
+  equal(status()[codexAgentId], "limit"); // gastó todo su tope de 0,50
+  resolveRequest(store, "ntf_request", true);
+  equal(status()[codexAgentId], "active"); // el tope subió a 1,00
+  setAgentPaused(store, codexAgentId, true);
+  equal(status()[codexAgentId], "paused");
 });
