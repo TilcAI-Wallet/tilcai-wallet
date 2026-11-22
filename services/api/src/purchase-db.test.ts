@@ -63,8 +63,8 @@ test("PostgreSQL: credentials, tenant isolation, concurrent replay and reservati
   assert.deepEqual(persisted.rows[0],{submissions:1,attempts:1});
   assert.equal(finalReceipt.json().delivery.status,"pending");
   assert.equal((await app.inject({method:"GET",url:`/v1/orders/${first.json().orderId}`,headers})).json().status,"paid");
+  assert.equal((await app.inject({method:"GET",url:`/v1/sessions/${sb}`,headers})).statusCode,404);
   await admin.query("UPDATE wallet_private.credentials SET revoked_at=now() WHERE tenant_id=$1",[a]);
   assert.equal((await app.inject({method:"GET",url:`/v1/cards/${card}`,headers})).statusCode,401);
-  assert.equal((await app.inject({method:"GET",url:`/v1/sessions/${sb}`,headers})).statusCode,404);
   assert.equal((await app.inject({method:"GET",url:`/v1/cards/${card}`,headers:{authorization:`Bearer ${wrong}`}})).statusCode,401);
 });
