@@ -26,3 +26,11 @@ migraciones dos veces y prueba parte de RLS y permisos. No apuntar a un entorno
 compartido. La suite incluye comprobaciones de rollback y limpieza de contexto, aún no ejecutadas
 localmente. Faltan pruebas de carreras de orden, lease/fencing y de la respuesta HTTP
 409; no se afirma que estén implementadas.
+
+La migración 005 incorpora sobres Testnet cifrados, una sola fila por intento,
+restricción de nonce por clave y funciones que verifican `session_user` asignado y
+lease vigente. El rol de API y el worker no tienen acceso directo a la tabla; el
+worker accede solo mediante las funciones. La clave AEAD nunca se almacena en la
+base. `wallet.tenant_id` por sí solo no autentica: la conexión y el código del
+servicio siguen formando parte de la frontera de confianza. La API aún no habilita
+órdenes Testnet y no existe un mecanismo de difusión.
