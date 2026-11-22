@@ -1,6 +1,5 @@
 -- Initial storage foundation. Apply only through a migration owner, never the API role.
 -- No runtime grants are made here: provisioning and authentication remain separate.
-BEGIN;
 CREATE SCHEMA IF NOT EXISTS wallet_private;
 REVOKE ALL ON SCHEMA wallet_private FROM PUBLIC;
 CREATE TABLE IF NOT EXISTS wallet_private.tenants (
@@ -106,4 +105,3 @@ BEGIN
   END LOOP;
 END $$;
 REVOKE ALL ON ALL TABLES IN SCHEMA wallet_private FROM PUBLIC;
-COMMIT;

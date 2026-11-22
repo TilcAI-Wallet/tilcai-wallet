@@ -7,6 +7,7 @@ if [[ "$version" -lt 170000 || "$version" -ge 180000 ]]; then
   exit 1
 fi
 root=$(cd "$(dirname "$0")" && pwd)
-psql "$WALLET_TEST_DATABASE_URL" -Xq -v ON_ERROR_STOP=1 -f "$root/migrations/001_purchase.sql"
-psql "$WALLET_TEST_DATABASE_URL" -Xq -v ON_ERROR_STOP=1 -f "$root/migrations/001_purchase.sql"
+psql "$WALLET_TEST_DATABASE_URL" -Xq -v ON_ERROR_STOP=1 -f "$root/bootstrap-roles.sql"
+WALLET_MIGRATION_DATABASE_URL="$WALLET_TEST_DATABASE_URL" bash "$root/migrate.sh"
+WALLET_MIGRATION_DATABASE_URL="$WALLET_TEST_DATABASE_URL" bash "$root/migrate.sh"
 psql "$WALLET_TEST_DATABASE_URL" -Xq -v ON_ERROR_STOP=1 -f "$root/tests/isolation.sql"
