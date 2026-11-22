@@ -3,7 +3,6 @@ import { connection } from "next/server";
 import { AgentPill } from "@/components/AgentPill";
 import { PauseAgentButton, ResumeAgentButton, TestPurchaseButton } from "@/components/actions";
 import { Icon } from "@/components/Icon";
-import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { Page, PageHeader } from "@/components/ui";
 import { agentStatus } from "@/lib/ledger";
 import { formatUsdc } from "@/lib/money";
@@ -57,9 +56,6 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
       ) : (
         <PauseAgentButton agentId={agent.id} name={agent.name} />
       )}
-      <div>
-        <SimulatedBadge simulated />
-      </div>
     </Page>
   );
 }
