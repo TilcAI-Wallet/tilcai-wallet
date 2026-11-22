@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
-import { approvePairingAction, createPairingAction, pairingStatusAction, rejectPairingAction, simulateConnectionAction } from "@/app/actions";
+import { approvePairingAction, createPairingAction, pairingStatusAction, rejectPairingAction } from "@/app/actions";
 import { agentClients, type AgentClient } from "@/lib/ledger";
 import { verifyPasskey } from "@/lib/passkey";
 import { Icon, type IconName } from "./Icon";
@@ -306,22 +306,6 @@ export function NewAgentFlow() {
               </div>
             </section>
           )}
-          {error && <Banner tone="error">{error}</Banner>}
-          <button
-            type="button"
-            disabled={pending || !code}
-            onClick={() =>
-              start(async () => {
-                setError(null);
-                const result = await simulateConnectionAction(code ?? "");
-                if (!result.ok) return setError(result.error);
-                setStep(3);
-              })
-            }
-            className="flex min-h-11 w-fit items-center self-center text-accent disabled:opacity-60"
-          >
-            Simular conexión del agente (MCP simulado)
-          </button>
         </>
       )}
 

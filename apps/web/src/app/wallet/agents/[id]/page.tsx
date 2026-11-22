@@ -1,13 +1,13 @@
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 import { AgentPill } from "@/components/AgentPill";
-import { PauseAgentButton, ResumeAgentButton, SimulatePurchaseButton } from "@/components/actions";
+import { PauseAgentButton, ResumeAgentButton } from "@/components/actions";
 import { Icon } from "@/components/Icon";
 import { SimulatedBadge } from "@/components/SimulatedBadge";
 import { Page, PageHeader } from "@/components/ui";
 import { agentStatus } from "@/lib/ledger";
 import { formatUsdc } from "@/lib/money";
-import { store, wallet } from "@/lib/wallet";
+import { wallet } from "@/lib/wallet";
 
 export default async function AgentDetail({ params }: { params: Promise<{ id: string }> }) {
   await connection();
@@ -17,9 +17,7 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
   if (agent.linkedCard) redirect("/wallet/cards");
   if (agent.card === null) redirect(`/wallet/agents/${agent.id}/card`);
 
-  const status = agentStatus(agent);
-  const connectedByMcp = store().pairings.some((p) => p.agentId === agent.id);
-  const left = BigInt(agent.limit) - BigInt(agent.spent);
+  const status = agentStatus(agent);  const left = BigInt(agent.limit) - BigInt(agent.spent);
   const rows: [string, string][] = [
     ["Tope acumulado", formatUsdc(agent.limit)],
     ["Gastado", formatUsdc(agent.spent)],
@@ -53,7 +51,6 @@ export default async function AgentDetail({ params }: { params: Promise<{ id: st
           </div>
         ))}
       </dl>
-      {connectedByMcp && status === "active" && <SimulatePurchaseButton agentId={agent.id} />}
       {status === "paused" ? (
         <ResumeAgentButton agentId={agent.id} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-accent px-5 text-xl text-ink" />
       ) : (
