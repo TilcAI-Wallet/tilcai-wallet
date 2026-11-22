@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import type { Result } from "@/app/actions";
 import { Banner } from "./ui";
 
@@ -58,7 +58,7 @@ export function ActionButton({
   onDone,
 }: {
   action: () => Promise<Result>;
-  children: string;
+  children: ReactNode;
   busy?: string;
   className: string;
   confirm?: string;

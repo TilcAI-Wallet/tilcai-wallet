@@ -14,6 +14,7 @@ import {
 } from "@/app/actions";
 import type { Prefs } from "@/lib/auth";
 import { ActionButton, Toggle } from "./controls";
+import { Icon } from "./Icon";
 import { Banner, Field } from "./ui";
 
 const solid = "flex min-h-12 w-full items-center justify-center rounded-full bg-accent px-5 text-lg text-ink";
@@ -40,7 +41,27 @@ export const MarkAllRead = () => (
   </ActionButton>
 );
 
-export const AgentToggle = ({ agentId, paused, name }: { agentId: string; paused: boolean; name: string }) => (
+export const ResumeAgentButton = ({ agentId, className }: { agentId: string; className: string }) => (
+  <ActionButton action={() => setAgentPausedAction(agentId, false)} busy="Reanudando…" className={className}>
+    <>
+      <Icon name="play" size={22} strokeWidth={2} />
+      Reanudar
+    </>
+  </ActionButton>
+);
+
+export const PauseAgentButton = ({ agentId, name }: { agentId: string; name: string }) => (
+  <ActionButton
+    action={() => setAgentPausedAction(agentId, true)}
+    busy="Pausando…"
+    className="flex min-h-11 w-full items-center justify-center text-base text-ivory/70"
+    confirm={`¿Pausar a ${name}? Dejará de poder comprar al instante.`}
+  >
+    Pausar agente
+  </ActionButton>
+);
+
+export const AgentToggle =({ agentId, paused, name }: { agentId: string; paused: boolean; name: string }) => (
   <Toggle label={`${name}: ${paused ? "en pausa" : "activo"}`} detail={paused ? "No puede comprar hasta que lo reanudes." : "Puede comprar dentro de su tope."} on={!paused} onChange={(on) => setAgentPausedAction(agentId, !on)} />
 );
 
