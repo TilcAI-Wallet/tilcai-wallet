@@ -1,3 +1,4 @@
+import { mcpDocsUrl } from "../project-footer";
 import type { ChannelDemo } from "./channel-types";
 import { ChatScene } from "./chat-scene";
 import { TerminalScene } from "./terminal-scene";
@@ -11,6 +12,9 @@ export function ChannelScene({ scene }: { scene: ChannelDemo }) {
         <h3>{scene.name}</h3>
         <p>{scene.detail}</p>
         <span>{scene.status}</span>
+        {scene.kind === "terminal" && scene.view === "mcp" && (
+          <a href={mcpDocsUrl}>Configurar la conexión MCP ↗</a>
+        )}
       </div>
       <div className={styles.preview}>
         {scene.kind === "chat" && <ChatScene scene={scene} />}

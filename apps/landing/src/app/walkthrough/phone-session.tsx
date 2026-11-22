@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { demoPurchase as purchase } from "../story/demo-purchase";
 import { PhoneFrame } from "./phone-frame";
 import styles from "./phone-session.module.css";
 
@@ -6,10 +7,10 @@ export type SessionPhase = "card" | "limit" | "purchase" | "receipt";
 type WalletScreen = SessionPhase | "welcome" | "wallet";
 
 const screens: Record<WalletScreen, [string, string]> = {
-  card: ["tarjeta", "Tarjeta Codex Portátil de la PWA con saldo de 20 USDC."],
-  limit: ["sesiones", "Sesiones de la PWA con un tope de 0,50 USDC para Codex."],
-  purchase: ["compra", "Tarjeta en la PWA después del pago. Saldo 19,50 USDC."],
-  receipt: ["recibo", "Recibo de la PWA con pago de 0,50 USDC y el ledger 5859035 de Stellar Testnet."],
+  card: ["tarjeta", `Tarjeta de la PWA con saldo de ${purchase.initial}.`],
+  limit: ["sesiones", `Sesiones de la PWA con un tope de ${purchase.limit}.`],
+  purchase: ["compra", `Tarjeta de la PWA después de la compra de demostración. Saldo ${purchase.balance}.`],
+  receipt: ["recibo", `Recibo de demostración de la PWA por ${purchase.payment}.`],
   welcome: ["inicio", "Pantalla de bienvenida de la PWA TilcAI Wallet."],
   wallet: ["wallet", "Inicio de TilcAI Wallet con saldo, actividad y navegación inferior."],
 };

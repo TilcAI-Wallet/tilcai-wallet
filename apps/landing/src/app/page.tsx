@@ -1,11 +1,7 @@
-import { projectName } from "@tilcai-wallet/config";
 import { LandingHeader, LandingHero } from "./landing-hero";
 import { Walkthrough } from "./walkthrough/walkthrough";
 import { ChannelStory } from "./channels/channel-story";
-
-// shortcut: points to the GitHub org until the team has a pilot form or contact email.
-const pilotUrl = "https://github.com/TilcAI-Wallet";
-const repoUrl = "https://github.com/TilcAI-Wallet/tilcai-wallet";
+import { ProjectFooter, repoUrl } from "./project-footer";
 
 export default function Landing() {
   return (
@@ -24,21 +20,14 @@ export default function Landing() {
               Buscamos agencias de automatización con IA y freelancers que compran datos o informes para sus clientes. El
               piloto corre en Stellar testnet y el plan previsto es una suscripción mensual por agencia.
             </p>
-            <a href={pilotUrl} className="mt-9 inline-block rounded-full bg-paper px-6 py-3 font-semibold text-violet-deep hover:bg-sand">
-              Solicitar el piloto
+            <a href={repoUrl} className="mt-9 inline-block rounded-full bg-paper px-6 py-3 font-semibold text-violet-deep hover:bg-sand">
+              Ver el proyecto
             </a>
           </div>
         </section>
       </main>
 
-      <footer className="border-t border-line">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-8 text-sm text-muted md:px-10">
-          <span>{projectName}. Hecho en La Paz, sobre Stellar.</span>
-          <a href={repoUrl} className="font-medium text-ink underline underline-offset-4 hover:text-violet">
-            Código en GitHub
-          </a>
-        </div>
-      </footer>
+      <ProjectFooter />
     </>
   );
 }

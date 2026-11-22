@@ -25,14 +25,6 @@
 }
 .copy > svg { color: #7847a5; margin-bottom: .65rem; }
 .copy p { margin-top: .55rem; max-width: 34ch; color: #504058; line-height: 1.5; }
-.copy a {
-  display: inline-block;
-  margin-top: .35rem;
-  color: #62358a;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: .18em;
-}
 .phone { justify-self: end; margin-right: min(5%, 2rem); }
 
 @media (max-width: 840px) {

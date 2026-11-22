@@ -7,16 +7,28 @@ type BaseScene = {
   detail: string;
 };
 
+type ChatMessage = {
+  from: "you" | "wallet";
+  text: string;
+  time: string;
+  title?: string;
+  attachment?: "card";
+  actions?: readonly (readonly string[])[];
+};
+
 export type ChatDemo = BaseScene & {
   kind: "chat";
   theme: "whatsapp" | "telegram";
-  messages: readonly { from: "you" | "wallet"; text: string; time: string }[];
+  messages: readonly ChatMessage[];
 };
 
 export type TerminalDemo = BaseScene & {
   kind: "terminal";
   theme: "claude" | "codex" | "opencode" | "cli";
-  lines: readonly { tone: "prompt" | "tool" | "result"; text: string }[];
+  setup: readonly string[];
+  prompt: string;
+  tool: string;
+  view: "mcp" | "health";
 };
 
 export type SurfaceDemo = BaseScene & {
