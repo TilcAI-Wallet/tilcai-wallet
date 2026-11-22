@@ -136,7 +136,7 @@ export default function Landing() {
           </div>
         </section>
 
-        <section className="mx-auto max-w-6xl px-6 py-24 md:px-10">
+        <section id="canales" className="mx-auto max-w-6xl px-6 py-24 md:px-10">
           <h2 className="text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Donde ya trabajas</h2>
           <p className="mt-5 max-w-xl leading-relaxed text-muted">
             La misma wallet y los mismos recibos, sin importar desde dónde se use.
@@ -150,7 +150,7 @@ export default function Landing() {
           </ul>
         </section>
 
-        <section className="on-violet mx-auto mb-24 max-w-6xl px-6 md:px-10">
+        <section id="piloto" className="on-violet mx-auto mb-24 max-w-6xl px-6 md:px-10">
           <div className="bg-violet-deep px-8 py-14 text-paper md:px-14 md:py-20">
             <h2 className="max-w-2xl text-4xl font-extrabold tracking-[-0.03em] md:text-5xl">Piloto con agencias de La Paz</h2>
             <p className="mt-5 max-w-xl text-lg leading-relaxed text-paper/85">
