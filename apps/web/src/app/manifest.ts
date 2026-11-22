@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
     name: projectName,
-    short_name: "TilcAI",
+    short_name: projectName,
     description: "Sigue el pago de tu agente y abre el recibo.",
     lang: "es",
     start_url: "/",
@@ -15,11 +15,11 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["finance"],
     background_color: "#0b0b0d",
     theme_color: "#0b0b0d",
-    // El logo ocupa la zona segura central, así que el mismo PNG sirve como "maskable".
+    // El icono "maskable" va a sangre y con el logo dentro de la zona segura central.
     icons: [
       { src: "/wallet-icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/wallet-icon.png", sizes: "512x512", type: "image/png" },
-      { src: "/wallet-icon.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      { src: "/wallet-icon-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

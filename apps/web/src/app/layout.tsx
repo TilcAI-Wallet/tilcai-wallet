@@ -9,7 +9,7 @@ const bargain = localFont({ src: "../fonts/bargain.otf", weight: "400", display:
 export const metadata: Metadata = {
   title: projectName,
   description: "Control y evidencia para las compras de agentes.",
-  appleWebApp: { capable: true, title: "TilcAI", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: projectName, statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
