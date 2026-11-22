@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useState, useSyncExternalStore, useTransition, type CSSProperties } from "react";
 import { approvePairingAction, confirmConnectionAction, createPairingAction, pairingStatusAction, rejectPairingAction } from "@/app/actions";
 import { agentClients, type AgentClient } from "@/lib/ledger";
 import { verifyPasskey } from "@/lib/passkey";
@@ -50,6 +50,13 @@ const noSubscribe = () => () => undefined;
 export function NewAgentFlow() {
   const router = useRouter();
   const [step, setStep] = useState<Step>(1);
+  // Dirección del último cambio de paso: avanzar entra desde la derecha, retroceder desde la izquierda.
+  const [prevStep, setPrevStep] = useState<Step>(1);
+  const [dir, setDir] = useState<1 | -1>(1);
+  if (step !== prevStep) {
+    setPrevStep(step);
+    setDir(step > prevStep ? 1 : -1);
+  }
   const [clientId, setClientId] = useState<AgentClient>("claude");
   const [alias, setAlias] = useState(clients[0]!.alias);
   const [aliasError, setAliasError] = useState<string | null>(null);
@@ -191,14 +198,16 @@ export function NewAgentFlow() {
         </div>
         <div className="flex gap-2" aria-hidden="true">
           {[1, 2, 3, 4].map((n) => (
-            <span key={n} className={`h-2 flex-1 rounded-full ${n <= step ? "bg-accent" : "bg-ivory/20"}`} />
+            <span key={n} className="relative h-2 flex-1 overflow-hidden rounded-full bg-ivory/20">
+              <span className={`absolute inset-0 origin-left rounded-full bg-accent transition-transform duration-500 ease-(--ease-out) motion-reduce:transition-none ${n <= step ? "scale-x-100" : "scale-x-0"}`} />
+            </span>
           ))}
         </div>
         <p className="text-center text-sm text-ivory/80">Paso {step} de 4</p>
       </header>
 
       {step === 1 && (
-        <>
+        <div key={1} className="step-in flex flex-1 flex-col gap-5" style={{ "--enter-x": dir } as CSSProperties}>
           <section>
             <h1 className="text-4xl tracking-tight">Nuevo agente</h1>
             <p className="text-base text-ivory/80">Elige el cliente que quieres conectar.</p>
@@ -250,11 +259,11 @@ export function NewAgentFlow() {
               <Icon name="arrow" size={24} />
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {step === 2 && (
-        <>
+        <div key={2} className="step-in flex flex-1 flex-col gap-5" style={{ "--enter-x": dir } as CSSProperties}>
           <section>
             <h1 className="text-4xl tracking-tight">Conectar con MCP</h1>
             <p className="text-base text-ivory/80">Configura Tilcai Wallet en tu computadora.</p>
@@ -343,11 +352,11 @@ export function NewAgentFlow() {
               Ver demo
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {step === 3 && (
-        <>
+        <div key={3} className="step-in flex flex-1 flex-col gap-5" style={{ "--enter-x": dir } as CSSProperties}>
           <section>
             <h1 className="text-4xl tracking-tight">Aprobar acceso</h1>
             <p className="text-base text-ivory/80">Se detectó una solicitud de conexión de un agente.</p>
@@ -391,11 +400,11 @@ export function NewAgentFlow() {
               Rechazar
             </button>
           </div>
-        </>
+        </div>
       )}
 
       {step === 4 && (
-        <>
+        <div key={4} className="step-in flex flex-1 flex-col gap-5" style={{ "--enter-x": dir } as CSSProperties}>
           <section className="flex flex-col items-center gap-3 pt-2 text-center">
             <span className="flex size-20 items-center justify-center rounded-full bg-mint text-ink">
               <Icon name="check" size={46} strokeWidth={2.6} />
@@ -432,7 +441,7 @@ export function NewAgentFlow() {
               Ahora no
             </Link>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
